@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { QrCode, Loader2, Download, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,24 +21,19 @@ interface Props {
   price: number;
 }
 
-type Tab = "vinyl" | "qr";
-
 export function QrPreviewButton({ slug, vehicleName, brand, model, year, price }: Props) {
   const [loading, setLoading] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-  const [vinylDataUrl, setVinylDataUrl] = useState<string | null>(null);
   const [vehicleUrl, setVehicleUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("vinyl");
 
   async function handleOpen(open: boolean) {
     if (open && !qrDataUrl) {
       setLoading(true);
       setError(null);
-      const result = await generateQrPreview(slug, { brand, model, year, price });
-      if (result.success) {
-        setQrDataUrl(result.qrDataUrl || null);
-        setVinylDataUrl(result.vinylDataUrl || null);
+      const result = await generateQrPreview(slug);
+      if (result.success && result.qrDataUrl) {
+        setQrDataUrl(result.qrDataUrl);
         setVehicleUrl(result.vehicleUrl || null);
       } else {
         setError(result.error || "Error desconocido");
@@ -48,11 +42,56 @@ export function QrPreviewButton({ slug, vehicleName, brand, model, year, price }
     }
   }
 
-  function handleDownload(dataUrl: string, filename: string) {
-    const link = document.createElement("a");
-    link.download = filename;
-    link.href = dataUrl;
-    link.click();
+  function handleDownload() {
+    if (!qrDataUrl) return;
+    // Draw the full vinyl art to a canvas and download
+    const canvas = document.createElement("canvas");
+    const size = 2000;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // White background
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, size, size);
+
+    // "SE VENDE" header
+    ctx.fillStyle = "#000000";
+    ctx.textAlign = "center";
+    ctx.font = "900 140px Arial Black, Impact, Arial, sans-serif";
+    ctx.letterSpacing = "8px";
+    ctx.fillText("SE VENDE", size / 2, 200);
+
+    // QR code
+    const qrImg = new Image();
+    qrImg.onload = () => {
+      const qrSize = size * 0.65;
+      const qrX = (size - qrSize) / 2;
+      const qrY = 280;
+      ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+
+      // Vehicle info
+      ctx.fillStyle = "#000000";
+      ctx.font = "700 52px Arial, sans-serif";
+      ctx.fillText(`${brand} ${model} ${year}`, size / 2, qrY + qrSize + 80);
+
+      // Price
+      ctx.font = "900 72px Arial Black, Impact, Arial, sans-serif";
+      ctx.fillText(`$${price.toLocaleString("en-US")}`, size / 2, qrY + qrSize + 160);
+
+      // URL
+      ctx.font = "600 36px Arial, sans-serif";
+      ctx.fillStyle = "#555555";
+      const shortUrl = vehicleUrl?.replace(/^https?:\/\//, "") || slug;
+      ctx.fillText(shortUrl, size / 2, qrY + qrSize + 220);
+
+      const link = document.createElement("a");
+      link.download = `vinil-${slug}.png`;
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    };
+    qrImg.src = qrDataUrl;
   }
 
   return (
@@ -68,38 +107,12 @@ export function QrPreviewButton({ slug, vehicleName, brand, model, year, price }
           <span className="hidden sm:inline">QR</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-center">
-            {vehicleName}
+            Arte de Impresion
           </DialogTitle>
         </DialogHeader>
-
-        {/* Tabs */}
-        {!loading && !error && qrDataUrl && (
-          <div className="flex justify-center gap-1 rounded-lg bg-secondary p-1">
-            <button
-              onClick={() => setActiveTab("vinyl")}
-              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === "vinyl"
-                  ? "bg-white text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Arte de Impresion
-            </button>
-            <button
-              onClick={() => setActiveTab("qr")}
-              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeTab === "qr"
-                  ? "bg-white text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Solo QR
-            </button>
-          </div>
-        )}
 
         <div className="flex flex-col items-center gap-4 py-2">
           {loading && (
@@ -115,31 +128,64 @@ export function QrPreviewButton({ slug, vehicleName, brand, model, year, price }
             </div>
           )}
 
-          {/* Vinyl art preview */}
-          {activeTab === "vinyl" && vinylDataUrl && (
+          {qrDataUrl && (
             <>
-              <div className="w-full rounded-xl border border-border bg-white p-3 shadow-sm">
-                <Image
-                  src={vinylDataUrl}
-                  alt={`Arte de impresion vinil para ${vehicleName}`}
-                  width={600}
-                  height={600}
-                  className="w-full rounded-lg"
-                  unoptimized
-                />
+              {/* Vinyl art preview rendered client-side */}
+              <div className="w-full rounded-xl border-2 border-dashed border-border bg-white p-6 shadow-sm">
+                <div className="flex flex-col items-center gap-3">
+                  {/* SE VENDE */}
+                  <h2
+                    className="text-3xl font-black tracking-widest text-black sm:text-4xl"
+                    style={{ fontFamily: "Arial Black, Impact, sans-serif" }}
+                  >
+                    SE VENDE
+                  </h2>
+
+                  {/* QR */}
+                  <div className="my-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={qrDataUrl}
+                      alt={`QR code para ${vehicleName}`}
+                      className="size-[220px] sm:size-[260px]"
+                    />
+                  </div>
+
+                  {/* Vehicle info */}
+                  <p className="text-lg font-bold text-black">
+                    {brand} {model} {year}
+                  </p>
+
+                  {/* Price */}
+                  <p
+                    className="text-2xl font-black text-black sm:text-3xl"
+                    style={{ fontFamily: "Arial Black, Impact, sans-serif" }}
+                  >
+                    ${price.toLocaleString("en-US")}
+                  </p>
+
+                  {/* URL */}
+                  {vehicleUrl && (
+                    <p className="text-xs text-gray-500 break-all">
+                      {vehicleUrl.replace(/^https?:\/\//, "")}
+                    </p>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground text-center">
-                Vinil microperforado 65x65 cm — Este es el arte que se imprime y pega en el carro
+
+              <p className="text-[11px] text-muted-foreground text-center">
+                Vinil microperforado 65 x 65 cm — Se imprime y pega en el vidrio trasero
               </p>
+
               <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleDownload(vinylDataUrl, `vinil-${slug}.png`)}
+                  onClick={handleDownload}
                   className="gap-1.5"
                 >
                   <Download className="size-3.5" />
-                  Descargar arte (preview)
+                  Descargar arte
                 </Button>
                 <Button
                   variant="outline"
@@ -151,38 +197,6 @@ export function QrPreviewButton({ slug, vehicleName, brand, model, year, price }
                     <ExternalLink className="size-3.5" />
                     Ver tarjeta
                   </a>
-                </Button>
-              </div>
-            </>
-          )}
-
-          {/* QR only preview */}
-          {activeTab === "qr" && qrDataUrl && (
-            <>
-              <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
-                <Image
-                  src={qrDataUrl}
-                  alt={`QR code para ${vehicleName}`}
-                  width={280}
-                  height={280}
-                  className="size-[280px]"
-                  unoptimized
-                />
-              </div>
-              {vehicleUrl && (
-                <p className="text-xs text-muted-foreground break-all text-center">
-                  {vehicleUrl}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDownload(qrDataUrl, `qr-${slug}.png`)}
-                  className="gap-1.5"
-                >
-                  <Download className="size-3.5" />
-                  Descargar QR
                 </Button>
               </div>
             </>

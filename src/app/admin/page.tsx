@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AdminStats } from "@/components/admin/admin-stats";
+import { AiDailyInsight } from "@/components/admin/ai-daily-insight";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard",
@@ -14,6 +15,11 @@ export default function AdminDashboardPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Vista general de la plataforma
         </p>
+      </div>
+
+      {/* AI Daily Insight */}
+      <div className="mt-6">
+        <AiDailyInsight />
       </div>
 
       <Suspense
