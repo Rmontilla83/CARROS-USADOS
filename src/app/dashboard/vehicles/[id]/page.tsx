@@ -137,7 +137,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={coverUrl}
-                alt={`${v.brand} ${v.model}`}
+                alt={`${v.brand} ${v.model} ${v.year}`}
                 className="size-full object-cover"
               />
             ) : (

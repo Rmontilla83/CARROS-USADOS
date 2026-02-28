@@ -90,6 +90,7 @@ export function VinylDownloadCard({
               <img
                 src={vinylUrl}
                 alt={`Vinil QR - ${brand} ${model} ${year}`}
+                loading="lazy"
                 className="w-full"
               />
             </div>

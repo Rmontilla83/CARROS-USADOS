@@ -59,9 +59,10 @@ export function PhotoGallery({ photos }: Props) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={photos[current].url}
-          alt={`Foto ${current + 1}`}
+          alt={`Foto del vehículo ${current + 1} de ${photos.length}`}
           className="size-full object-cover"
         />
 
@@ -104,9 +105,11 @@ export function PhotoGallery({ photos }: Props) {
                   : "opacity-60 hover:opacity-100"
               }`}
             >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photo.url}
                 alt={`Miniatura ${i + 1}`}
+                loading="lazy"
                 className="size-14 object-cover sm:size-16"
               />
             </button>
@@ -118,6 +121,8 @@ export function PhotoGallery({ photos }: Props) {
       {lightboxOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          role="dialog"
+          aria-label="Galería de fotos en pantalla completa"
           onClick={() => setLightboxOpen(false)}
         >
           <button
@@ -133,9 +138,10 @@ export function PhotoGallery({ photos }: Props) {
             onTouchStart={handleTouchStart}
             onTouchEnd={handleTouchEnd}
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={photos[current].url}
-              alt={`Foto ${current + 1}`}
+              alt={`Foto del vehículo ${current + 1} de ${photos.length}`}
               className="max-h-[90vh] max-w-[95vw] object-contain"
               onClick={(e) => e.stopPropagation()}
             />
@@ -145,12 +151,14 @@ export function PhotoGallery({ photos }: Props) {
                 <button
                   onClick={(e) => { e.stopPropagation(); prev(); }}
                   className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+                  aria-label="Foto anterior"
                 >
                   <ChevronLeft className="size-6" />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); next(); }}
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+                  aria-label="Siguiente foto"
                 >
                   <ChevronRight className="size-6" />
                 </button>

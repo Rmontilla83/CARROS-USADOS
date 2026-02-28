@@ -292,6 +292,7 @@ export default async function VehicleCardPage({ params }: PageProps) {
                   controls
                   preload="metadata"
                   className="w-full rounded-lg bg-black"
+                  aria-label={`Video del ${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
                 />
               </div>
             </>

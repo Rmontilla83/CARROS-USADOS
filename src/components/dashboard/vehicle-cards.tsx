@@ -112,7 +112,8 @@ export async function VehicleCards() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={coverUrl}
-                  alt={`${vehicle.brand} ${vehicle.model}`}
+                  alt={`${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
+                  loading="lazy"
                   className="size-full object-cover"
                 />
               ) : (
