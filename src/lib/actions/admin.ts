@@ -123,3 +123,24 @@ export async function assignCourier(
   revalidatePath("/admin/qr-orders");
   return { success: true };
 }
+
+/**
+ * Generate a QR code preview as a base64 data URL for a vehicle slug.
+ */
+export async function generateQrPreview(
+  slug: string
+): Promise<{ success: boolean; dataUrl?: string; vehicleUrl?: string; error?: string }> {
+  const auth = await requireAdmin();
+  if ("error" in auth) return { success: false, error: (auth as ActionResult).error };
+
+  const { generateQrDataUrl } = await import("@/lib/qr/generate");
+  const { APP_URL } = await import("@/lib/constants");
+
+  try {
+    const dataUrl = await generateQrDataUrl(slug);
+    return { success: true, dataUrl, vehicleUrl: `${APP_URL}/${slug}` };
+  } catch (err) {
+    console.error("QR preview error:", err);
+    return { success: false, error: "Error al generar el QR." };
+  }
+}

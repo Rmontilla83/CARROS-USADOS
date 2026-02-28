@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { VehicleStatusActions } from "./vehicle-status-actions";
+import { QrPreviewButton } from "./qr-preview-button";
 import { AdminVehicleFilters } from "./admin-vehicle-filters";
 import type { Vehicle, Profile, VehicleStatus } from "@/types";
 
@@ -157,10 +158,16 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
                         })}
                       </TableCell>
                       <TableCell className="text-right">
-                        <VehicleStatusActions
-                          vehicleId={v.id}
-                          currentStatus={v.status}
-                        />
+                        <div className="flex items-center justify-end gap-1">
+                          <QrPreviewButton
+                            slug={v.slug}
+                            vehicleName={`${v.brand} ${v.model} ${v.year}`}
+                          />
+                          <VehicleStatusActions
+                            vehicleId={v.id}
+                            currentStatus={v.status}
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -194,10 +201,16 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
                       <Eye className="size-3" />
                       {v.views_count} visitas
                     </span>
-                    <VehicleStatusActions
-                      vehicleId={v.id}
-                      currentStatus={v.status}
-                    />
+                    <div className="flex items-center gap-1">
+                      <QrPreviewButton
+                        slug={v.slug}
+                        vehicleName={`${v.brand} ${v.model} ${v.year}`}
+                      />
+                      <VehicleStatusActions
+                        vehicleId={v.id}
+                        currentStatus={v.status}
+                      />
+                    </div>
                   </div>
                 </div>
               );
