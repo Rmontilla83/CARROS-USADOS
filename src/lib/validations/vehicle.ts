@@ -49,6 +49,14 @@ export const vehicleDescriptionSchema = z.object({
 
 export type VehicleDescriptionFormData = z.infer<typeof vehicleDescriptionSchema>;
 
+export const deliverySchema = z.object({
+  address: z.string().min(1, "Dirección requerida"),
+  city: z.string().min(1, "Ciudad requerida"),
+  phone: z.string().min(1, "Teléfono requerido"),
+  preferredTime: z.enum(["morning", "afternoon", "any"]),
+  notes: z.string().optional(),
+});
+
 // Full vehicle for submission
 export const publishVehicleSchema = z.object({
   brand: z.string().min(1),
@@ -67,6 +75,7 @@ export const publishVehicleSchema = z.object({
   photoStoragePaths: z.array(z.string()).min(MIN_PHOTOS).max(MAX_PHOTOS),
   coverPhotoIndex: z.number().int().min(0),
   videoStoragePath: z.string().optional(),
+  delivery: deliverySchema,
 });
 
 export type PublishVehicleData = z.infer<typeof publishVehicleSchema>;

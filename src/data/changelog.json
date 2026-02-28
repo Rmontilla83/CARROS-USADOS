@@ -1,0 +1,106 @@
+[
+  {
+    "version": "2.0.0",
+    "date": "2026-02-28",
+    "entries": [
+      {
+        "type": "feature",
+        "title": "Disclaimers legales y páginas de seguridad",
+        "description": "Página de términos y condiciones completa, página de recomendaciones de seguridad para compradores y vendedores, banner de seguridad en tarjetas públicas, checkbox obligatorio de aceptación de términos."
+      },
+      {
+        "type": "feature",
+        "title": "Vinil QR rediseñado para microperforado 65x65cm",
+        "description": "Nuevo diseño cuadrado optimizado para rollos de microperforado de 1.30m de ancho con 0% desperdicio. QR gigante escaneable a 5-8 metros. Versión rectangular alternativa de 65x43cm incluida."
+      },
+      {
+        "type": "feature",
+        "title": "Eliminador de fondo con IA",
+        "description": "Procesamiento server-side para reemplazar el fondo de las fotos por un gradiente profesional tipo showroom. Preview antes/después con slider comparativo."
+      },
+      {
+        "type": "feature",
+        "title": "Guía de fotos para vendedores",
+        "description": "Guía visual con los 8 ángulos recomendados para fotografiar el vehículo y tips de iluminación."
+      },
+      {
+        "type": "feature",
+        "title": "Datos de entrega del vinil",
+        "description": "Nuevo paso en el wizard de publicación para capturar dirección de entrega, ciudad, teléfono, horario preferido y notas para el motorizado."
+      },
+      {
+        "type": "feature",
+        "title": "Admin 360 — Panel completo del negocio",
+        "description": "Gráficas de publicaciones, top vehículos más visitados, panel de impresión y entregas mejorado, sistema de changelog, estadísticas avanzadas."
+      },
+      {
+        "type": "improvement",
+        "title": "Precio actualizado a $20",
+        "description": "Nuevo precio de publicación reflejado en toda la plataforma."
+      },
+      {
+        "type": "security",
+        "title": "Seguridad avanzada",
+        "description": "Content Security Policy headers, rate limiting en acciones críticas, honeypot anti-spam, compresión de imágenes client-side, sanitización de inputs."
+      }
+    ]
+  },
+  {
+    "version": "1.2.0",
+    "date": "2026-02-25",
+    "entries": [
+      {
+        "type": "improvement",
+        "title": "Rediseño UI premium",
+        "description": "Identidad visual completamente renovada con colores premium, tipografía Inter, tarjetas con bordes redondeados, gradientes y efectos glass morphism."
+      }
+    ]
+  },
+  {
+    "version": "1.1.0",
+    "date": "2026-02-20",
+    "entries": [
+      {
+        "type": "feature",
+        "title": "Catálogo público",
+        "description": "Página de catálogo con filtros por marca, precio, año, transmisión y combustible. Ordenamiento por precio, fecha y visitas."
+      },
+      {
+        "type": "feature",
+        "title": "Análisis de precios con IA",
+        "description": "Integración con Google Gemini para análisis de precios del mercado venezolano. Badges de precio bueno/justo/alto en las tarjetas."
+      },
+      {
+        "type": "feature",
+        "title": "Sistema de expiración",
+        "description": "Publicaciones con vigencia de 60 días, cron job para expiración automática, emails de advertencia y expiración, renovación desde el dashboard."
+      },
+      {
+        "type": "feature",
+        "title": "Emails transaccionales con Resend",
+        "description": "Notificaciones por email al publicar, al expirar y de bienvenida al registrarse."
+      }
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "date": "2026-02-15",
+    "entries": [
+      {
+        "type": "feature",
+        "title": "MVP completo lanzado",
+        "description": "Autenticación con Supabase Auth, wizard de publicación de 6 pasos, galería de fotos con lightbox, tarjeta digital con QR, vinil para impresión, dashboard del vendedor, panel de administración, analytics de visitas y escaneos QR."
+      },
+      {
+        "type": "feature",
+        "title": "Generación de vinil QR",
+        "description": "Generación automática de vinil de alta resolución (300 DPI) para impresión, con QR code, datos del vehículo y branding."
+      },
+      {
+        "type": "feature",
+        "title": "Panel de administración",
+        "description": "Dashboard admin con estadísticas, gestión de publicaciones, cola de impresión QR y gestión de usuarios."
+      }
+    ]
+  }
+]

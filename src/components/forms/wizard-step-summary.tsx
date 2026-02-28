@@ -1,11 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Car, DollarSign, Camera, Film, FileText, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import {
+  Car,
+  DollarSign,
+  Camera,
+  Film,
+  FileText,
+  CheckCircle2,
+  Truck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { VEHICLE_CONDITIONS } from "@/lib/constants";
+import { VEHICLE_CONDITIONS, APP_NAME } from "@/lib/constants";
 import { publishVehicle } from "@/lib/actions/vehicle";
 import type { WizardData } from "@/types/wizard";
 
@@ -28,15 +38,27 @@ const FUEL_LABELS: Record<string, string> = {
   gas: "Gas",
 };
 
+const TIME_LABELS: Record<string, string> = {
+  morning: "Mañana (8am - 12pm)",
+  afternoon: "Tarde (12pm - 6pm)",
+  any: "Cualquier hora",
+};
+
 export function WizardStepSummary({ data, onBack }: Props) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(data.termsAccepted);
 
   const activeConditions = VEHICLE_CONDITIONS.filter(
     (c) => data.conditions[c.key]
   );
 
   async function handlePublish() {
+    if (!termsAccepted) {
+      setError("Debes aceptar los términos y condiciones para publicar");
+      return;
+    }
+
     setIsPublishing(true);
     setError(null);
 
@@ -61,9 +83,15 @@ export function WizardStepSummary({ data, onBack }: Props) {
       photoStoragePaths,
       coverPhotoIndex: data.coverPhotoIndex,
       videoStoragePath: data.video?.storagePath || undefined,
+      delivery: {
+        address: data.delivery.address,
+        city: data.delivery.city,
+        phone: data.delivery.phone,
+        preferredTime: data.delivery.preferredTime,
+        notes: data.delivery.notes || undefined,
+      },
     });
 
-    // If we get here, redirect didn't happen, so there's an error
     if (result?.error) {
       setError(result.error);
       setIsPublishing(false);
@@ -233,6 +261,64 @@ export function WizardStepSummary({ data, onBack }: Props) {
         )}
       </div>
 
+      {/* Delivery */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+          <Truck className="size-4" />
+          Datos de Entrega
+        </div>
+        <Separator className="my-3" />
+        <div className="grid gap-2 text-sm">
+          <div>
+            <span className="text-muted-foreground">Dirección:</span>{" "}
+            <span className="font-medium">{data.delivery.address}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Ciudad:</span>{" "}
+            <span className="font-medium">{data.delivery.city}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Teléfono:</span>{" "}
+            <span className="font-medium">{data.delivery.phone}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Horario:</span>{" "}
+            <span className="font-medium">
+              {TIME_LABELS[data.delivery.preferredTime]}
+            </span>
+          </div>
+          {data.delivery.notes && (
+            <div>
+              <span className="text-muted-foreground">Notas:</span>{" "}
+              <span className="font-medium">{data.delivery.notes}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Terms and conditions */}
+      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <Checkbox
+            checked={termsAccepted}
+            onCheckedChange={(checked) => setTermsAccepted(checked === true)}
+            className="mt-0.5"
+          />
+          <span className="text-sm text-foreground">
+            He leído y acepto los{" "}
+            <Link
+              href="/terminos"
+              target="_blank"
+              className="font-medium text-primary underline"
+            >
+              Términos y Condiciones
+            </Link>{" "}
+            de {APP_NAME}. Entiendo que la plataforma no interviene en la
+            transacción y que soy responsable de la información publicada.
+          </span>
+        </label>
+      </div>
+
       {/* Actions */}
       <div className="flex justify-between pt-4">
         <Button
@@ -248,7 +334,7 @@ export function WizardStepSummary({ data, onBack }: Props) {
           onClick={handlePublish}
           className="bg-accent text-accent-foreground hover:bg-accent/90"
           size="lg"
-          disabled={isPublishing}
+          disabled={isPublishing || !termsAccepted}
         >
           {isPublishing ? "Publicando..." : "Publicar Vehículo"}
         </Button>

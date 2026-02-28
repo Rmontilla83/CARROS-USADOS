@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Car, Eye, QrCode } from "lucide-react";
+import { Car, Eye, QrCode, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 import type { Vehicle, Media, VehicleStatus } from "@/types";
@@ -16,6 +16,7 @@ type VehicleRow = Pick<
   | "views_count"
   | "qr_scans_count"
   | "created_at"
+  | "expires_at"
 >;
 
 const STATUS_CONFIG: Record<
@@ -57,7 +58,7 @@ export async function VehicleCards() {
   const { data: vehicles } = await supabase
     .from("vehicles")
     .select(
-      "id, brand, model, year, price, slug, status, views_count, qr_scans_count, created_at"
+      "id, brand, model, year, price, slug, status, views_count, qr_scans_count, created_at, expires_at"
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
@@ -102,6 +103,14 @@ export async function VehicleCards() {
         const statusConfig = STATUS_CONFIG[vehicle.status];
         const coverUrl = coverMap.get(vehicle.id);
 
+        // Calculate days until expiration
+        let daysUntilExpiry: number | null = null;
+        if (vehicle.expires_at && vehicle.status === "active") {
+          daysUntilExpiry = Math.ceil(
+            (new Date(vehicle.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+          );
+        }
+
         return (
           <Link
             key={vehicle.id}
@@ -122,11 +131,19 @@ export async function VehicleCards() {
                   <Car className="size-12 text-muted-foreground/20" />
                 </div>
               )}
-              <Badge
-                className={`absolute right-3 top-3 border text-[11px] font-semibold shadow-sm ${statusConfig.className}`}
-              >
-                {statusConfig.label}
-              </Badge>
+              <div className="absolute right-3 top-3 flex flex-col items-end gap-1.5">
+                <Badge
+                  className={`border text-[11px] font-semibold shadow-sm ${statusConfig.className}`}
+                >
+                  {statusConfig.label}
+                </Badge>
+                {daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0 && (
+                  <Badge className="border border-yellow-300 bg-yellow-100 text-[11px] font-semibold text-yellow-700 shadow-sm">
+                    <Clock className="mr-1 size-3" />
+                    Vence en {daysUntilExpiry}d
+                  </Badge>
+                )}
+              </div>
             </div>
 
             {/* Info */}

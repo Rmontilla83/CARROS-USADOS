@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { createClient } from "@/lib/supabase/server";
 import { VinylDownloadCard } from "@/components/vehicle/vinyl-download-card";
 import { MarkAsSoldButton } from "@/components/dashboard/mark-as-sold-button";
+import { RenewButton } from "@/components/dashboard/renew-button";
 import { FeedbackSummary } from "@/components/dashboard/feedback-summary";
 import type { Vehicle, Media, QrOrder, VehicleStatus } from "@/types";
 
@@ -192,6 +193,10 @@ export default async function VehicleDetailPage({ params }: PageProps) {
               </Link>
               {v.status === "active" && (
                 <MarkAsSoldButton vehicleId={v.id} />
+              )}
+              {(v.status === "expired" || (v.status === "active" && v.expires_at &&
+                Math.ceil((new Date(v.expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) <= 7)) && (
+                <RenewButton vehicleId={v.id} />
               )}
             </div>
           </div>

@@ -48,7 +48,7 @@ export function Navbar({ transparent = false }: Props) {
         {/* Desktop nav */}
         <nav className="hidden items-center gap-2 md:flex">
           <Link
-            href="/#vehiculos"
+            href="/catalogo"
             className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               solid ? "text-muted-foreground hover:text-foreground" : "text-white/80 hover:text-white"
             }`}
@@ -107,7 +107,7 @@ export function Navbar({ transparent = false }: Props) {
         <div className="border-t border-border bg-white px-4 pb-4 pt-2 shadow-lg md:hidden animate-in slide-in-from-top-2 duration-200">
           <nav className="flex flex-col gap-1">
             <Link
-              href="/#vehiculos"
+              href="/catalogo"
               onClick={() => setMobileOpen(false)}
               className="rounded-lg px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
             >

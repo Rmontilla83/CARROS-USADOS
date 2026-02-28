@@ -81,6 +81,8 @@ export interface QrOrder {
   delivery_address: string | null;
   delivery_city: string | null;
   delivery_phone: string | null;
+  preferred_time: string | null;
+  delivery_notes: string | null;
   status: QrOrderStatus;
   printed_at: string | null;
   assigned_at: string | null;

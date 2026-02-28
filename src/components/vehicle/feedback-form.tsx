@@ -20,12 +20,18 @@ const OPINIONS: { value: PriceOpinion; label: string; emoji: string }[] = [
 export function FeedbackForm({ vehicleId }: Props) {
   const [opinion, setOpinion] = useState<PriceOpinion | null>(null);
   const [comment, setComment] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
     if (!opinion) return;
+    // Honeypot check — bots fill hidden fields
+    if (honeypot) {
+      setSubmitted(true);
+      return;
+    }
     setSubmitting(true);
     setError(null);
 
@@ -82,6 +88,18 @@ export function FeedbackForm({ vehicleId }: Props) {
           </button>
         ))}
       </div>
+
+      {/* Honeypot field — hidden from real users, filled by bots */}
+      <input
+        type="text"
+        name="website"
+        value={honeypot}
+        onChange={(e) => setHoneypot(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        className="absolute -left-[9999px] h-0 w-0 opacity-0"
+        aria-hidden="true"
+      />
 
       {opinion && (
         <>

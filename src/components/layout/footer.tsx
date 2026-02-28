@@ -28,7 +28,7 @@ export function Footer() {
             </h3>
             <ul className="mt-3 space-y-2">
               <li>
-                <Link href="/#vehiculos" className="text-sm text-white/70 hover:text-white transition-colors">
+                <Link href="/catalogo" className="text-sm text-white/70 hover:text-white transition-colors">
                   Ver vehículos
                 </Link>
               </li>
@@ -74,20 +74,24 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
+          {/* Legal & Contact */}
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider text-white/40">
-              Contacto
+              Legal y Seguridad
             </h3>
             <ul className="mt-3 space-y-2">
-              <li className="text-sm text-white/70">
-                Barcelona, Anzoátegui
+              <li>
+                <Link href="/terminos" className="text-sm text-white/70 hover:text-white transition-colors">
+                  Términos y Condiciones
+                </Link>
+              </li>
+              <li>
+                <Link href="/seguridad" className="text-sm text-white/70 hover:text-white transition-colors">
+                  Recomendaciones de Seguridad
+                </Link>
               </li>
               <li className="text-sm text-white/70">
-                Puerto La Cruz
-              </li>
-              <li className="text-sm text-white/70">
-                Lechería
+                Barcelona · Puerto La Cruz · Lechería
               </li>
             </ul>
           </div>

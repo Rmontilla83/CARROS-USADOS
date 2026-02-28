@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     template: `%s | ${APP_NAME}`,
   },
   description:
-    "Marketplace de vehículos usados en Venezuela. Publica tu carro por $10, recibe un vinil QR profesional y vende más rápido. Barcelona, Puerto La Cruz, Lechería.",
+    "Marketplace de vehículos usados en Venezuela. Publica tu carro por $20, recibe un vinil QR profesional y vende más rápido. Barcelona, Puerto La Cruz, Lechería.",
   keywords: [
     "carros usados",
     "vehículos usados Venezuela",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     siteName: APP_NAME,
     title: `${APP_NAME} — Vende tu carro con QR`,
     description:
-      "Publica tu carro por $10, recibe un vinil QR y deja que los compradores escaneen para ver fotos, precio y detalles.",
+      "Publica tu carro por $20, recibe un vinil QR y deja que los compradores escaneen para ver fotos, precio y detalles.",
     url: APP_URL,
   },
   twitter: {

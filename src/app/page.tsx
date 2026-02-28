@@ -129,7 +129,7 @@ export default async function Home() {
                 <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" />
               </Link>
               <Link
-                href="#vehiculos"
+                href="/catalogo"
                 className="flex items-center gap-2 rounded-xl border border-white/20 px-6 py-4 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
               >
                 <Eye className="size-4" />
@@ -237,13 +237,22 @@ export default async function Home() {
                 </h2>
               </div>
               {typedVehicles.length > 0 && (
-                <Link
-                  href="/dashboard/publish"
-                  className="hidden items-center gap-1 text-sm font-medium text-accent hover:underline sm:flex"
-                >
-                  Publica el tuyo
-                  <ArrowRight className="size-3.5" />
-                </Link>
+                <div className="hidden items-center gap-4 sm:flex">
+                  <Link
+                    href="/catalogo"
+                    className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                  >
+                    Ver todos
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                  <Link
+                    href="/dashboard/publish"
+                    className="flex items-center gap-1 text-sm font-medium text-accent hover:underline"
+                  >
+                    Publica el tuyo
+                    <ArrowRight className="size-3.5" />
+                  </Link>
+                </div>
               )}
             </div>
 

@@ -13,6 +13,14 @@ export interface UploadedVideo {
   uploading: boolean;
 }
 
+export interface DeliveryData {
+  address: string;
+  city: string;
+  phone: string;
+  preferredTime: "morning" | "afternoon" | "any";
+  notes: string;
+}
+
 export interface WizardData {
   // Step 1 - Vehicle data
   brand: string;
@@ -39,6 +47,12 @@ export interface WizardData {
   // Step 5 - Description
   description: string;
   conditions: Record<string, boolean>;
+
+  // Step 6 - Delivery
+  delivery: DeliveryData;
+
+  // Terms acceptance
+  termsAccepted: boolean;
 }
 
 export const initialWizardData: WizardData = {
@@ -58,4 +72,12 @@ export const initialWizardData: WizardData = {
   price: 0,
   description: "",
   conditions: {},
+  delivery: {
+    address: "",
+    city: "",
+    phone: "",
+    preferredTime: "any",
+    notes: "",
+  },
+  termsAccepted: false,
 };

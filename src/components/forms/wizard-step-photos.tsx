@@ -5,6 +5,8 @@ import { Upload, X, Star, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { MIN_PHOTOS, MAX_PHOTOS } from "@/lib/constants";
+import { PhotoGuide } from "@/components/forms/photo-guide";
+import { compressImage } from "@/lib/image/compress";
 import type { WizardData, UploadedPhoto } from "@/types/wizard";
 
 interface Props {
@@ -62,8 +64,13 @@ export function WizardStepPhotos({ data, onNext, onBack }: Props) {
     const toAdd = fileArray.slice(0, remaining);
     setError(null);
 
+    // Compress images client-side before upload (max 2MB each)
+    const compressed = await Promise.all(
+      toAdd.map((file) => compressImage(file).catch(() => file))
+    );
+
     // Create preview entries
-    const newPhotos: UploadedPhoto[] = toAdd.map((file) => ({
+    const newPhotos: UploadedPhoto[] = compressed.map((file) => ({
       id: generateId(),
       file,
       previewUrl: URL.createObjectURL(file),
@@ -155,6 +162,8 @@ export function WizardStepPhotos({ data, onNext, onBack }: Props) {
         Mínimo {MIN_PHOTOS} fotos, máximo {MAX_PHOTOS}. La primera foto será la
         portada por defecto. Arrastra para reordenar.
       </p>
+
+      <PhotoGuide />
 
       {error && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">

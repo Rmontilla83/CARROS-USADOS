@@ -1,16 +1,24 @@
 import sharp from "sharp";
 import { generateQrBuffer } from "./generate";
-import { APP_NAME, APP_URL } from "@/lib/constants";
+import { APP_URL } from "@/lib/constants";
 
-// 300 DPI dimensions for ~30x20 cm vinyl sticker
+// 300 DPI dimensions for 65x65 cm square vinyl (microperforated roll)
 const DPI = 300;
-const WIDTH_CM = 30;
-const HEIGHT_CM = 20;
-const WIDTH_PX = Math.round((WIDTH_CM / 2.54) * DPI); // ~3543
-const HEIGHT_PX = Math.round((HEIGHT_CM / 2.54) * DPI); // ~2362
 
-const PRIMARY_COLOR = "#1B4F72";
-const ACCENT_COLOR = "#27AE60";
+// Square format: 65x65 cm — 2 pieces per 1.30m wide roll, 0% waste
+const SQUARE_WIDTH_CM = 65;
+const SQUARE_HEIGHT_CM = 65;
+const SQUARE_WIDTH_PX = Math.round((SQUARE_WIDTH_CM / 2.54) * DPI); // ~7677
+const SQUARE_HEIGHT_PX = Math.round((SQUARE_HEIGHT_CM / 2.54) * DPI); // ~7677
+
+// Rectangular format: 65x43 cm — 3 pieces per 1.30m wide roll (for panoramic rear windows)
+const RECT_WIDTH_CM = 65;
+const RECT_HEIGHT_CM = 43;
+const RECT_WIDTH_PX = Math.round((RECT_WIDTH_CM / 2.54) * DPI); // ~7677
+const RECT_HEIGHT_PX = Math.round((RECT_HEIGHT_CM / 2.54) * DPI); // ~5079
+
+// Cut margin: 5mm per side
+const CUT_MARGIN_PX = Math.round((0.5 / 2.54) * DPI); // ~59px
 
 interface VinylTemplateInput {
   slug: string;
@@ -20,113 +28,99 @@ interface VinylTemplateInput {
   price: number;
 }
 
+type VinylFormat = "square" | "rectangular";
+
 /**
- * Generate a high-resolution vinyl sticker PNG for printing.
- * Layout: "SE VENDE" header, vehicle info, centered QR code, URL below, branding footer.
+ * Generate a high-resolution vinyl sticker PNG for microperforated printing.
+ * Square (65x65cm): 2 per 1.30m roll width, 0% waste.
+ * Rectangular (65x43cm): 3 per 1.30m roll width, for panoramic rear windows.
+ *
+ * Layout (top to bottom):
+ * - "SE VENDE" in ultra bold, minimum 5cm tall
+ * - QR code occupying ~70% of space (~45x45cm), black on pure white
+ * - Portal URL in readable text
+ *
+ * High contrast: pure black #000000 QR on pure white #FFFFFF for max readability with microperforated vinyl.
  */
 export async function generateVinylPng(
-  input: VinylTemplateInput
+  input: VinylTemplateInput,
+  format: VinylFormat = "square"
 ): Promise<Buffer> {
   const { slug, brand, model, year, price } = input;
 
-  // Generate QR code at large size for print quality
-  const qrSize = 1200;
+  const WIDTH_PX = format === "square" ? SQUARE_WIDTH_PX : RECT_WIDTH_PX;
+  const HEIGHT_PX = format === "square" ? SQUARE_HEIGHT_PX : RECT_HEIGHT_PX;
+
+  // QR takes ~70% of the available space
+  const qrSize = format === "square"
+    ? Math.round(WIDTH_PX * 0.68)  // ~5220px for square (~44cm)
+    : Math.round(Math.min(WIDTH_PX, HEIGHT_PX) * 0.65); // for rectangular
+
+  // Generate QR code at maximum size for print quality
   const qrBuffer = await generateQrBuffer(slug, qrSize);
 
   const vehicleUrl = `${APP_URL}/${slug}`;
   const shortUrl = vehicleUrl.replace(/^https?:\/\//, "");
-  const priceFormatted = `$${price.toLocaleString("en-US")}`;
-  const vehicleTitle = `${brand} ${model} ${year}`;
 
-  // Build SVG template for text elements
+  // "SE VENDE" text height: minimum 5cm = ~590px at 300DPI
+  const seVendeFontSize = format === "square" ? 500 : 380;
+  const urlFontSize = format === "square" ? 160 : 120;
+
+  // Layout vertical positions
+  const seVendeY = format === "square"
+    ? CUT_MARGIN_PX + 600
+    : CUT_MARGIN_PX + 450;
+
+  const qrTop = format === "square"
+    ? seVendeY + 200
+    : seVendeY + 120;
+
+  const urlY = format === "square"
+    ? qrTop + qrSize + 300
+    : qrTop + qrSize + 200;
+
+  // Build SVG template — pure white background, pure black text, maximum contrast
   const svgTemplate = `
     <svg width="${WIDTH_PX}" height="${HEIGHT_PX}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900');
-        </style>
-      </defs>
+      <!-- Pure white background -->
+      <rect width="${WIDTH_PX}" height="${HEIGHT_PX}" fill="#FFFFFF"/>
 
-      <!-- Background -->
-      <rect width="${WIDTH_PX}" height="${HEIGHT_PX}" rx="60" ry="60" fill="white"/>
+      <!-- Cut margin guides (very light, won't print on vinyl) -->
+      <rect x="${CUT_MARGIN_PX}" y="${CUT_MARGIN_PX}"
+            width="${WIDTH_PX - CUT_MARGIN_PX * 2}" height="${HEIGHT_PX - CUT_MARGIN_PX * 2}"
+            fill="none" stroke="#EEEEEE" stroke-width="2" stroke-dasharray="20,10"/>
 
-      <!-- Border -->
-      <rect x="20" y="20" width="${WIDTH_PX - 40}" height="${HEIGHT_PX - 40}"
-            rx="50" ry="50" fill="none" stroke="${PRIMARY_COLOR}" stroke-width="8"/>
-
-      <!-- Top accent bar -->
-      <rect x="20" y="20" width="${WIDTH_PX - 40}" height="280"
-            rx="50" ry="50" fill="${PRIMARY_COLOR}"/>
-      <rect x="20" y="200" width="${WIDTH_PX - 40}" height="100" fill="${PRIMARY_COLOR}"/>
-
-      <!-- "SE VENDE" header -->
-      <text x="${WIDTH_PX / 2}" y="200"
-            font-family="Inter, Arial, Helvetica, sans-serif"
-            font-weight="900" font-size="180"
-            fill="white" text-anchor="middle" letter-spacing="12">
+      <!-- "SE VENDE" header — ultra bold, pure black for max visibility -->
+      <text x="${WIDTH_PX / 2}" y="${seVendeY}"
+            font-family="Arial Black, Impact, Arial, Helvetica, sans-serif"
+            font-weight="900" font-size="${seVendeFontSize}"
+            fill="#000000" text-anchor="middle" letter-spacing="30">
         SE VENDE
       </text>
 
-      <!-- Vehicle title -->
-      <text x="${WIDTH_PX / 2}" y="460"
-            font-family="Inter, Arial, Helvetica, sans-serif"
-            font-weight="700" font-size="100"
-            fill="${PRIMARY_COLOR}" text-anchor="middle">
-        ${escapeXml(vehicleTitle)}
-      </text>
-
-      <!-- Price -->
-      <text x="${WIDTH_PX / 2}" y="580"
-            font-family="Inter, Arial, Helvetica, sans-serif"
-            font-weight="900" font-size="120"
-            fill="${ACCENT_COLOR}" text-anchor="middle">
-        ${priceFormatted}
-      </text>
-
-      <!-- "Escanea el QR" instruction -->
-      <text x="${WIDTH_PX / 2}" y="700"
-            font-family="Inter, Arial, Helvetica, sans-serif"
-            font-weight="400" font-size="56"
-            fill="#666666" text-anchor="middle">
-        Escanea el código QR para ver fotos y detalles
-      </text>
-
-      <!-- URL below QR (positioned after QR area) -->
-      <text x="${WIDTH_PX / 2}" y="2040"
-            font-family="Inter, Arial, Helvetica, sans-serif"
-            font-weight="700" font-size="52"
-            fill="${PRIMARY_COLOR}" text-anchor="middle">
+      <!-- URL below QR -->
+      <text x="${WIDTH_PX / 2}" y="${urlY}"
+            font-family="Arial, Helvetica, sans-serif"
+            font-weight="700" font-size="${urlFontSize}"
+            fill="#000000" text-anchor="middle">
         ${escapeXml(shortUrl)}
       </text>
-
-      <!-- Platform branding -->
-      <text x="${WIDTH_PX / 2}" y="2200"
-            font-family="Inter, Arial, Helvetica, sans-serif"
-            font-weight="400" font-size="44"
-            fill="#999999" text-anchor="middle">
-        Publicado en ${escapeXml(APP_NAME)}
-      </text>
-
-      <!-- Accent line at bottom -->
-      <rect x="${WIDTH_PX / 2 - 200}" y="2250" width="400" height="6"
-            rx="3" fill="${ACCENT_COLOR}"/>
     </svg>
   `;
 
   // Create the base image from SVG
   const baseImage = sharp(Buffer.from(svgTemplate)).png();
 
-  // Resize QR code to fit within the template
-  const qrDisplaySize = 1100;
+  // Resize QR code — pure black on transparent/white background
   const qrResized = await sharp(qrBuffer)
-    .resize(qrDisplaySize, qrDisplaySize, { fit: "contain" })
+    .resize(qrSize, qrSize, { fit: "contain" })
     .png()
     .toBuffer();
 
-  // Composite QR on top of the base template
-  const qrLeft = Math.round((WIDTH_PX - qrDisplaySize) / 2);
-  const qrTop = 760; // Below the instruction text
+  // Center QR horizontally
+  const qrLeft = Math.round((WIDTH_PX - qrSize) / 2);
 
+  // Composite QR on top of the base template
   const finalImage = await baseImage
     .composite([
       {
@@ -145,9 +139,10 @@ export async function generateVinylPng(
  * Generate a lower-resolution preview of the vinyl for dashboard display.
  */
 export async function generateVinylPreview(
-  input: VinylTemplateInput
+  input: VinylTemplateInput,
+  format: VinylFormat = "square"
 ): Promise<Buffer> {
-  const fullVinyl = await generateVinylPng(input);
+  const fullVinyl = await generateVinylPng(input, format);
 
   // Scale down for web preview (~600px wide)
   return sharp(fullVinyl)

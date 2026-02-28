@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import {
   Car,
   Calendar,
@@ -19,11 +20,16 @@ import { Badge } from "@/components/ui/badge";
 import { PhotoGallery } from "@/components/vehicle/photo-gallery";
 import { WhatsAppButton } from "@/components/vehicle/whatsapp-button";
 import { ShareButton } from "@/components/vehicle/share-button";
-import { FeedbackForm } from "@/components/vehicle/feedback-form";
 import { ViewTracker } from "@/components/vehicle/view-tracker";
 import { createClient } from "@/lib/supabase/server";
 import { VEHICLE_CONDITIONS, APP_NAME, APP_URL } from "@/lib/constants";
-import type { Vehicle, Media, Profile } from "@/types";
+import type { Vehicle, Media, Profile, AiPriceReport } from "@/types";
+
+// Lazy load below-the-fold components
+const FeedbackForm = dynamic(
+  () => import("@/components/vehicle/feedback-form").then((m) => ({ default: m.FeedbackForm })),
+  { loading: () => <div className="h-32 animate-pulse rounded-lg bg-secondary" /> }
+);
 
 const TRANSMISSION_LABELS: Record<string, string> = {
   manual: "Manual",
@@ -39,8 +45,31 @@ const FUEL_LABELS: Record<string, string> = {
   gas: "Gas",
 };
 
+// ISR: revalidate every hour
+export const revalidate = 3600;
+
 interface PageProps {
   params: Promise<{ slug: string }>;
+}
+
+// Pre-generate most visited vehicle cards
+export async function generateStaticParams() {
+  // Use admin client since generateStaticParams runs outside request context
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !supabaseKey) return [];
+
+  const { createClient: createAdminClient } = await import("@supabase/supabase-js");
+  const supabase = createAdminClient(supabaseUrl, supabaseKey);
+
+  const { data: vehicles } = await supabase
+    .from("vehicles")
+    .select("slug")
+    .eq("status", "active")
+    .order("views_count", { ascending: false })
+    .limit(20);
+
+  return (vehicles || []).map((v: { slug: string }) => ({ slug: v.slug }));
 }
 
 async function getVehicle(slug: string) {
@@ -78,11 +107,21 @@ async function getVehicle(slug: string) {
     return a.display_order - b.display_order;
   });
 
+  // Fetch AI price report
+  const { data: aiReport } = await supabase
+    .from("ai_price_reports")
+    .select("suggested_price, market_price_low, market_price_high, confidence, analysis")
+    .eq("vehicle_id", typedVehicle.id)
+    .order("generated_at", { ascending: false })
+    .limit(1)
+    .single();
+
   return {
     vehicle: typedVehicle,
     photos,
     video,
     seller: profile as Pick<Profile, "full_name" | "phone" | "city"> | null,
+    aiReport: aiReport as Pick<AiPriceReport, "suggested_price" | "market_price_low" | "market_price_high" | "confidence" | "analysis"> | null,
   };
 }
 
@@ -123,7 +162,28 @@ export default async function VehicleCardPage({ params }: PageProps) {
   const data = await getVehicle(slug);
   if (!data) notFound();
 
-  const { vehicle, photos, video, seller } = data;
+  const { vehicle, photos, video, seller, aiReport } = data;
+
+  // Compute dynamic price badge
+  let priceBadge: { label: string; className: string } | null = null;
+  if (aiReport?.market_price_low != null && aiReport?.market_price_high != null) {
+    if (vehicle.price <= aiReport.market_price_low) {
+      priceBadge = {
+        label: "Buen precio",
+        className: "bg-green-100 text-green-700 border-green-300",
+      };
+    } else if (vehicle.price <= aiReport.market_price_high) {
+      priceBadge = {
+        label: "Precio justo",
+        className: "bg-accent/10 text-accent border-accent/20",
+      };
+    } else {
+      priceBadge = {
+        label: "Por encima del mercado",
+        className: "bg-orange-100 text-orange-700 border-orange-300",
+      };
+    }
+  }
 
   const activeConditions = VEHICLE_CONDITIONS.filter(
     (c) => vehicle.conditions && vehicle.conditions[c.key]
@@ -172,7 +232,7 @@ export default async function VehicleCardPage({ params }: PageProps) {
               url={`${APP_URL}/${slug}`}
             />
             <Link
-              href="/"
+              href="/catalogo"
               className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Ver más carros
@@ -202,10 +262,12 @@ export default async function VehicleCardPage({ params }: PageProps) {
               </span>
             </div>
             <div className="mt-2 flex items-center gap-2">
-              <Badge className="bg-accent/10 text-accent border-accent/20">
-                <TrendingUp className="size-3" />
-                Precio justo
-              </Badge>
+              {priceBadge && (
+                <Badge className={`${priceBadge.className} border`}>
+                  <TrendingUp className="size-3" />
+                  {priceBadge.label}
+                </Badge>
+              )}
               <span className="text-xs text-muted-foreground">
                 <Eye className="inline size-3" /> {vehicle.views_count} visitas
               </span>
@@ -297,6 +359,17 @@ export default async function VehicleCardPage({ params }: PageProps) {
             </div>
           )}
 
+          {/* Security banner */}
+          <Link
+            href="/seguridad"
+            className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 transition-colors hover:bg-amber-100"
+          >
+            <span className="text-lg">⚠️</span>
+            <span className="text-sm font-medium text-amber-800">
+              Recomendaciones de seguridad para tu compra
+            </span>
+          </Link>
+
           {/* Feedback */}
           <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
             <FeedbackForm vehicleId={vehicle.id} />
@@ -305,7 +378,7 @@ export default async function VehicleCardPage({ params }: PageProps) {
           {/* Back to catalog + footer */}
           <div className="space-y-4 pb-24 pt-4">
             <Link
-              href="/"
+              href="/catalogo"
               className="flex items-center justify-center gap-2 rounded-xl border border-border bg-white py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               <ArrowLeft className="size-4" />

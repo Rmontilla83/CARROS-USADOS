@@ -1,8 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { publishVehicleSchema, type PublishVehicleData } from "@/lib/validations/vehicle";
+import { sendEmail } from "@/lib/email/resend";
+import { vehiclePublishedEmail } from "@/lib/email/templates/vehicle-published";
+import { checkRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeString } from "@/lib/security/sanitize";
+import type { Profile } from "@/types";
 
 export interface PublishVehicleResult {
   error?: string;
@@ -27,10 +33,20 @@ export async function publishVehicle(
     return { error: "No autenticado" };
   }
 
+  // Rate limit: max 3 publications per hour per user
+  const { allowed } = checkRateLimit(`publish:${user.id}`, {
+    maxRequests: 3,
+    windowMs: 60 * 60 * 1000,
+  });
+  if (!allowed) {
+    return { error: "Has publicado demasiados vehículos. Intenta más tarde." };
+  }
+
   const {
     photoStoragePaths,
     coverPhotoIndex,
     videoStoragePath,
+    delivery,
     ...vehicleFields
   } = parsed.data;
 
@@ -50,7 +66,7 @@ export async function publishVehicle(
       engine: vehicleFields.engine || null,
       doors: vehicleFields.doors,
       price: vehicleFields.price,
-      description: vehicleFields.description || null,
+      description: vehicleFields.description ? sanitizeString(vehicleFields.description) : null,
       conditions: vehicleFields.conditions,
       status: "active",
       published_at: new Date().toISOString(),
@@ -58,7 +74,7 @@ export async function publishVehicle(
         Date.now() + 60 * 24 * 60 * 60 * 1000
       ).toISOString(), // 60 days
     })
-    .select("id")
+    .select("id, slug")
     .single();
 
   if (vehicleError || !vehicle) {
@@ -103,6 +119,45 @@ export async function publishVehicle(
     }
   }
 
+  // Create QR order with delivery data
+  if (delivery) {
+    const { error: qrOrderError } = await supabase.from("qr_orders").insert({
+      vehicle_id: vehicle.id,
+      status: "pending",
+      delivery_address: delivery.address,
+      delivery_city: delivery.city,
+      delivery_phone: delivery.phone,
+      preferred_time: delivery.preferredTime,
+      delivery_notes: delivery.notes || null,
+    });
+    if (qrOrderError) {
+      console.error("QR order insert error:", qrOrderError);
+    }
+  }
+
+  // Send publication email
+  try {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("email, full_name")
+      .eq("id", user.id)
+      .single();
+
+    const typedProfile = profile as Pick<Profile, "email" | "full_name"> | null;
+    if (typedProfile?.email) {
+      const { subject, html } = vehiclePublishedEmail(
+        typedProfile.full_name || "Usuario",
+        vehicleFields.brand,
+        vehicleFields.model,
+        vehicleFields.year,
+        (vehicle as { id: string; slug: string }).slug
+      );
+      await sendEmail(typedProfile.email, subject, html);
+    }
+  } catch (emailErr) {
+    console.error("Publication email error:", emailErr);
+  }
+
   redirect("/dashboard?published=true");
 }
 
@@ -138,5 +193,44 @@ export async function markVehicleAsSold(
     return { success: false, error: "Error al marcar como vendido." };
   }
 
+  return { success: true };
+}
+
+export interface RenewVehicleResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function renewVehicle(
+  vehicleId: string
+): Promise<RenewVehicleResult> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "No autenticado" };
+  }
+
+  const { error } = await supabase
+    .from("vehicles")
+    .update({
+      status: "active",
+      expires_at: new Date(
+        Date.now() + 60 * 24 * 60 * 60 * 1000
+      ).toISOString(), // 60 days from now
+    })
+    .eq("id", vehicleId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Renew vehicle error:", error);
+    return { success: false, error: "Error al renovar la publicación." };
+  }
+
+  revalidatePath(`/dashboard/vehicles/${vehicleId}`);
+  revalidatePath("/dashboard/vehicles");
   return { success: true };
 }

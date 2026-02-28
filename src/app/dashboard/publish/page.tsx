@@ -8,6 +8,7 @@ import { WizardStepPhotos } from "@/components/forms/wizard-step-photos";
 import { WizardStepVideo } from "@/components/forms/wizard-step-video";
 import { WizardStepPrice } from "@/components/forms/wizard-step-price";
 import { WizardStepDescription } from "@/components/forms/wizard-step-description";
+import { WizardStepDelivery } from "@/components/forms/wizard-step-delivery";
 import { WizardStepSummary } from "@/components/forms/wizard-step-summary";
 import { initialWizardData, type WizardData } from "@/types/wizard";
 
@@ -17,6 +18,7 @@ const STEPS = [
   { label: "Video", shortLabel: "Video" },
   { label: "Precio", shortLabel: "Precio" },
   { label: "Descripción", shortLabel: "Desc." },
+  { label: "Entrega", shortLabel: "Envío" },
   { label: "Resumen", shortLabel: "Listo" },
 ] as const;
 
@@ -73,7 +75,7 @@ export default function PublishPage() {
               {i < STEPS.length - 1 && (
                 <div
                   className={cn(
-                    "mx-1 h-0.5 w-4 sm:mx-2 sm:w-8",
+                    "mx-1 h-0.5 w-3 sm:mx-2 sm:w-6",
                     i < step ? "bg-accent" : "bg-border"
                   )}
                 />
@@ -102,7 +104,14 @@ export default function PublishPage() {
             onBack={handleBack}
           />
         )}
-        {step === 5 && <WizardStepSummary data={data} onBack={handleBack} />}
+        {step === 5 && (
+          <WizardStepDelivery
+            data={data}
+            onNext={handleNext}
+            onBack={handleBack}
+          />
+        )}
+        {step === 6 && <WizardStepSummary data={data} onBack={handleBack} />}
       </div>
     </div>
   );

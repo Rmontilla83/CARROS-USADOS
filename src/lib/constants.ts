@@ -2,7 +2,7 @@ export const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || "CarrosUsados";
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // Publication pricing
-export const PUBLICATION_PRICE_USD = 10;
+export const PUBLICATION_PRICE_USD = 20;
 
 // Vehicle constraints
 export const MIN_PHOTOS = 5;

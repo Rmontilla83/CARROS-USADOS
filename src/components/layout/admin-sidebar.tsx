@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Home,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -32,8 +33,9 @@ interface Props {
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/vehicles", label: "Publicaciones", icon: Car },
-  { href: "/admin/qr-orders", label: "Cola QR", icon: QrCode },
+  { href: "/admin/qr-orders", label: "Impresión y Entregas", icon: QrCode },
   { href: "/admin/users", label: "Usuarios", icon: Users },
+  { href: "/admin/changelog", label: "Changelog", icon: FileText, isNew: true },
 ];
 
 export function AdminSidebar({ userName, userEmail }: Props) {
@@ -80,6 +82,11 @@ export function AdminSidebar({ userName, userEmail }: Props) {
             >
               <item.icon className="size-4 shrink-0" />
               {item.label}
+              {"isNew" in item && item.isNew && (
+                <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white">
+                  Nuevo
+                </span>
+              )}
             </Link>
           );
         })}
