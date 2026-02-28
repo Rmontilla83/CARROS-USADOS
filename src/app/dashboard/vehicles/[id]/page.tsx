@@ -7,6 +7,10 @@ import {
   QrCode,
   MessageSquare,
   Calendar,
+  Sparkles,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -101,6 +105,36 @@ export default async function VehicleDetailPage({ params }: PageProps) {
     .select("price_opinion, comment, created_at")
     .eq("vehicle_id", v.id)
     .order("created_at", { ascending: false });
+
+  // Fetch AI price report
+  const { data: aiReport } = await supabase
+    .from("ai_price_reports")
+    .select("suggested_price, market_price_low, market_price_high, price_market_avg, confidence, factors_up, factors_down, argument_min, argument_max, argument_suggested, market_summary, generated_at")
+    .eq("vehicle_id", v.id)
+    .order("generated_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  const typedAiReport = aiReport as {
+    suggested_price: number | null;
+    market_price_low: number | null;
+    market_price_high: number | null;
+    price_market_avg: number | null;
+    confidence: number | null;
+    factors_up: string[] | null;
+    factors_down: string[] | null;
+    argument_min: string | null;
+    argument_max: string | null;
+    argument_suggested: string | null;
+    market_summary: string | null;
+    generated_at: string | null;
+  } | null;
+
+  // Check if vehicle has been active for 30+ days without selling
+  const daysSincePublished = v.published_at
+    ? Math.floor((Date.now() - new Date(v.published_at).getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  const showPriceSuggestion = v.status === "active" && daysSincePublished > 30 && typedAiReport?.suggested_price;
 
   const publishedDate = v.published_at
     ? new Date(v.published_at).toLocaleDateString("es-VE", {
@@ -233,6 +267,95 @@ export default async function VehicleDetailPage({ params }: PageProps) {
           </p>
         </div>
       </div>
+
+      {/* AI Price Report */}
+      {typedAiReport && typedAiReport.market_price_low != null && (
+        <div className="mt-6 rounded-lg border border-accent/30 bg-gradient-to-br from-accent/5 to-primary/5 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="size-5 text-accent" />
+            <h2 className="text-sm font-bold text-foreground">Reporte de Precio IA</h2>
+            {typedAiReport.confidence != null && (
+              <Badge className="ml-auto border border-accent/20 bg-accent/10 text-accent text-xs">
+                Confianza: {typedAiReport.confidence}%
+              </Badge>
+            )}
+          </div>
+
+          {/* Price range */}
+          <div className="grid gap-3 sm:grid-cols-4 mb-4">
+            <div className="rounded-lg bg-white p-3 border border-border">
+              <p className="text-[10px] font-medium text-muted-foreground">Minimo</p>
+              <p className="text-lg font-bold text-foreground">${typedAiReport.market_price_low?.toLocaleString("en-US")}</p>
+            </div>
+            <div className="rounded-lg bg-white p-3 border border-border">
+              <p className="text-[10px] font-medium text-muted-foreground">Promedio</p>
+              <p className="text-lg font-bold text-foreground">${typedAiReport.price_market_avg?.toLocaleString("en-US") || "—"}</p>
+            </div>
+            <div className="rounded-lg bg-white p-3 border border-accent/30">
+              <p className="text-[10px] font-medium text-accent">Sugerido</p>
+              <p className="text-lg font-bold text-accent">${typedAiReport.suggested_price?.toLocaleString("en-US")}</p>
+            </div>
+            <div className="rounded-lg bg-white p-3 border border-border">
+              <p className="text-[10px] font-medium text-muted-foreground">Maximo</p>
+              <p className="text-lg font-bold text-foreground">${typedAiReport.market_price_high?.toLocaleString("en-US")}</p>
+            </div>
+          </div>
+
+          {/* Factors */}
+          {(typedAiReport.factors_up || typedAiReport.factors_down) && (
+            <div className="grid gap-3 sm:grid-cols-2 mb-4">
+              {typedAiReport.factors_up && typedAiReport.factors_up.length > 0 && (
+                <div className="rounded-lg bg-green-50 p-3 border border-green-200">
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <TrendingUp className="size-3.5 text-green-600" />
+                    <span className="text-xs font-bold text-green-700">Sube el precio</span>
+                  </div>
+                  <ul className="space-y-0.5">
+                    {typedAiReport.factors_up.map((f: string) => (
+                      <li key={f} className="text-xs text-green-700">+ {f}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {typedAiReport.factors_down && typedAiReport.factors_down.length > 0 && (
+                <div className="rounded-lg bg-red-50 p-3 border border-red-200">
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <TrendingDown className="size-3.5 text-red-600" />
+                    <span className="text-xs font-bold text-red-700">Baja el precio</span>
+                  </div>
+                  <ul className="space-y-0.5">
+                    {typedAiReport.factors_down.map((f: string) => (
+                      <li key={f} className="text-xs text-red-700">- {f}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Arguments */}
+          {typedAiReport.market_summary && (
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {typedAiReport.market_summary}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* 30-day price suggestion */}
+      {showPriceSuggestion && (
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <AlertTriangle className="size-5 shrink-0 text-amber-600 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-800">
+              Tu vehiculo lleva {daysSincePublished} dias publicado sin venderse
+            </p>
+            <p className="text-sm text-amber-700 mt-1">
+              Considera ajustar tu precio a <strong>${typedAiReport?.suggested_price?.toLocaleString("en-US")}</strong> (precio sugerido por IA) para aumentar tus probabilidades de venta.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* QR / Vinyl section */}

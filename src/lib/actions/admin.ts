@@ -132,7 +132,7 @@ export async function generateQrPreview(
 ): Promise<{
   success: boolean;
   qrDataUrl?: string;
-  vehicleUrl?: string;
+  siteUrl?: string;
   error?: string;
 }> {
   const auth = await requireAdmin();
@@ -146,7 +146,7 @@ export async function generateQrPreview(
     return {
       success: true,
       qrDataUrl,
-      vehicleUrl: `${APP_URL}/${slug}`,
+      siteUrl: APP_URL,
     };
   } catch (err) {
     console.error("QR preview error:", err);

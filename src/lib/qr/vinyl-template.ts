@@ -22,96 +22,108 @@ const CUT_MARGIN_PX = Math.round((0.5 / 2.54) * DPI); // ~59px
 
 interface VinylTemplateInput {
   slug: string;
-  brand: string;
-  model: string;
-  year: number;
-  price: number;
 }
 
 type VinylFormat = "square" | "rectangular";
 
 /**
  * Generate a high-resolution vinyl sticker PNG for microperforated printing.
- * Square (65x65cm): 2 per 1.30m roll width, 0% waste.
- * Rectangular (65x43cm): 3 per 1.30m roll width, for panoramic rear windows.
  *
- * Layout (top to bottom):
- * - "SE VENDE" in ultra bold, minimum 5cm tall
- * - QR code occupying ~70% of space (~45x45cm), black on pure white
- * - Portal URL in readable text
- *
- * High contrast: pure black #000000 QR on pure white #FFFFFF for max readability with microperforated vinyl.
+ * Clean professional design:
+ * - Top accent bar (#1B4F72)
+ * - "SE VENDE" in brand color
+ * - QR code occupying ~75% of space (maximized for scannability)
+ * - Website URL (not vehicle URL — forces buyer to scan QR)
+ * - Bottom accent bar
  */
 export async function generateVinylPng(
   input: VinylTemplateInput,
   format: VinylFormat = "square"
 ): Promise<Buffer> {
-  const { slug, brand, model, year, price } = input;
+  const { slug } = input;
 
   const WIDTH_PX = format === "square" ? SQUARE_WIDTH_PX : RECT_WIDTH_PX;
   const HEIGHT_PX = format === "square" ? SQUARE_HEIGHT_PX : RECT_HEIGHT_PX;
 
-  // QR takes ~70% of the available space
+  // QR takes ~75% of available width (bigger now without vehicle info)
   const qrSize = format === "square"
-    ? Math.round(WIDTH_PX * 0.68)  // ~5220px for square (~44cm)
-    : Math.round(Math.min(WIDTH_PX, HEIGHT_PX) * 0.65); // for rectangular
+    ? Math.round(WIDTH_PX * 0.73)
+    : Math.round(Math.min(WIDTH_PX, HEIGHT_PX) * 0.70);
 
   // Generate QR code at maximum size for print quality
   const qrBuffer = await generateQrBuffer(slug, qrSize);
 
-  const vehicleUrl = `${APP_URL}/${slug}`;
-  const shortUrl = vehicleUrl.replace(/^https?:\/\//, "");
+  const siteUrl = APP_URL.replace(/^https?:\/\//, "");
+  const accentColor = "#1B4F72";
+  const barHeight = Math.round(HEIGHT_PX * 0.012);
 
-  // "SE VENDE" text height: minimum 5cm = ~590px at 300DPI
-  const seVendeFontSize = format === "square" ? 500 : 380;
-  const urlFontSize = format === "square" ? 160 : 120;
+  // Font sizes
+  const seVendeFontSize = format === "square" ? 520 : 400;
+  const urlFontSize = format === "square" ? 180 : 140;
 
   // Layout vertical positions
   const seVendeY = format === "square"
-    ? CUT_MARGIN_PX + 600
-    : CUT_MARGIN_PX + 450;
+    ? barHeight + CUT_MARGIN_PX + 650
+    : barHeight + CUT_MARGIN_PX + 480;
+
+  const divider1Y = seVendeY + 120;
 
   const qrTop = format === "square"
-    ? seVendeY + 200
-    : seVendeY + 120;
+    ? divider1Y + 120
+    : divider1Y + 80;
 
-  const urlY = format === "square"
-    ? qrTop + qrSize + 300
-    : qrTop + qrSize + 200;
+  const divider2Y = qrTop + qrSize + (format === "square" ? 120 : 80);
+  const urlY = divider2Y + (format === "square" ? 250 : 200);
 
-  // Build SVG template — pure white background, pure black text, maximum contrast
+  // Build SVG template
   const svgTemplate = `
     <svg width="${WIDTH_PX}" height="${HEIGHT_PX}" xmlns="http://www.w3.org/2000/svg">
       <!-- Pure white background -->
       <rect width="${WIDTH_PX}" height="${HEIGHT_PX}" fill="#FFFFFF"/>
 
-      <!-- Cut margin guides (very light, won't print on vinyl) -->
+      <!-- Top accent bar -->
+      <rect width="${WIDTH_PX}" height="${barHeight}" fill="${accentColor}"/>
+
+      <!-- Cut margin guides -->
       <rect x="${CUT_MARGIN_PX}" y="${CUT_MARGIN_PX}"
             width="${WIDTH_PX - CUT_MARGIN_PX * 2}" height="${HEIGHT_PX - CUT_MARGIN_PX * 2}"
             fill="none" stroke="#EEEEEE" stroke-width="2" stroke-dasharray="20,10"/>
 
-      <!-- "SE VENDE" header — ultra bold, pure black for max visibility -->
+      <!-- "SE VENDE" header -->
       <text x="${WIDTH_PX / 2}" y="${seVendeY}"
             font-family="Arial Black, Impact, Arial, Helvetica, sans-serif"
             font-weight="900" font-size="${seVendeFontSize}"
-            fill="#000000" text-anchor="middle" letter-spacing="30">
+            fill="${accentColor}" text-anchor="middle" letter-spacing="40">
         SE VENDE
       </text>
 
-      <!-- URL below QR -->
+      <!-- Divider line 1 -->
+      <line x1="${WIDTH_PX * 0.15}" y1="${divider1Y}"
+            x2="${WIDTH_PX * 0.85}" y2="${divider1Y}"
+            stroke="#E5E7EB" stroke-width="4"/>
+
+      <!-- Divider line 2 -->
+      <line x1="${WIDTH_PX * 0.15}" y1="${divider2Y}"
+            x2="${WIDTH_PX * 0.85}" y2="${divider2Y}"
+            stroke="#E5E7EB" stroke-width="4"/>
+
+      <!-- Site URL -->
       <text x="${WIDTH_PX / 2}" y="${urlY}"
             font-family="Arial, Helvetica, sans-serif"
             font-weight="700" font-size="${urlFontSize}"
-            fill="#000000" text-anchor="middle">
-        ${escapeXml(shortUrl)}
+            fill="${accentColor}" text-anchor="middle" letter-spacing="8">
+        ${escapeXml(siteUrl)}
       </text>
+
+      <!-- Bottom accent bar -->
+      <rect y="${HEIGHT_PX - barHeight}" width="${WIDTH_PX}" height="${barHeight}" fill="${accentColor}"/>
     </svg>
   `;
 
   // Create the base image from SVG
   const baseImage = sharp(Buffer.from(svgTemplate)).png();
 
-  // Resize QR code — pure black on transparent/white background
+  // Resize QR code
   const qrResized = await sharp(qrBuffer)
     .resize(qrSize, qrSize, { fit: "contain" })
     .png()

@@ -1,12 +1,18 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod/v4";
 
-const aiPriceResponseSchema = z.object({
-  suggested_price: z.number().positive(),
-  market_price_low: z.number().positive(),
-  market_price_high: z.number().positive(),
-  confidence: z.number().min(0).max(1),
-  analysis: z.string(),
+export const aiPriceResponseSchema = z.object({
+  price_min: z.number().positive(),
+  price_max: z.number().positive(),
+  price_suggested: z.number().positive(),
+  price_market_avg: z.number().positive(),
+  confidence: z.number().min(0).max(100),
+  factors_up: z.array(z.string()),
+  factors_down: z.array(z.string()),
+  argument_min: z.string(),
+  argument_max: z.string(),
+  argument_suggested: z.string(),
+  market_summary: z.string(),
 });
 
 export type AiPriceResponse = z.infer<typeof aiPriceResponseSchema>;
@@ -18,8 +24,41 @@ interface PriceAnalysisInput {
   mileage: number;
   transmission: string;
   fuel: string;
+  color?: string;
+  doors?: number;
+  engine?: string;
   city?: string;
+  conditions?: Record<string, boolean>;
 }
+
+const TRANSMISSION_LABELS: Record<string, string> = {
+  automatic: "Automatica",
+  manual: "Manual (sincronico)",
+  cvt: "CVT",
+};
+
+const FUEL_LABELS: Record<string, string> = {
+  gasoline: "Gasolina",
+  diesel: "Diesel",
+  electric: "Electrico",
+  hybrid: "Hibrido",
+  gas: "Gas (GNV)",
+};
+
+const CONDITION_LABELS: Record<string, string> = {
+  papers_ok: "Papeles al dia",
+  ac: "Aire acondicionado funcional",
+  original_paint: "Pintura original",
+  no_accidents: "Sin accidentes",
+  single_owner: "Unico dueno",
+  service_history: "Historial de mantenimiento",
+  spare_tire: "Caucho de repuesto",
+  alarm: "Alarma",
+  power_windows: "Vidrios electricos",
+  power_steering: "Direccion hidraulica",
+  abs: "Frenos ABS",
+  airbags: "Airbags",
+};
 
 export async function analyzePrice(input: PriceAnalysisInput): Promise<AiPriceResponse> {
   const apiKey = process.env.GOOGLE_AI_API_KEY;
@@ -30,27 +69,75 @@ export async function analyzePrice(input: PriceAnalysisInput): Promise<AiPriceRe
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
-  const prompt = `Eres un experto en el mercado de vehículos usados en Venezuela. Analiza el siguiente vehículo y proporciona una estimación de precio basada en el mercado venezolano actual.
+  // Build conditions description
+  const activeConditions: string[] = [];
+  const missingConditions: string[] = [];
+  if (input.conditions) {
+    for (const [key, value] of Object.entries(input.conditions)) {
+      const label = CONDITION_LABELS[key] || key;
+      if (value) {
+        activeConditions.push(label);
+      } else {
+        missingConditions.push(label);
+      }
+    }
+  }
 
-Vehículo:
+  const prompt = `Eres un experto tasador de vehiculos usados en Venezuela con 20 anos de experiencia. Tu trabajo es analizar vehiculos y establecer rangos de precios REALISTAS basados en el mercado venezolano actual.
+
+VEHICULO A ANALIZAR:
 - Marca: ${input.brand}
 - Modelo: ${input.model}
-- Año: ${input.year}
+- Ano: ${input.year}
 - Kilometraje: ${input.mileage.toLocaleString()} km
-- Transmisión: ${input.transmission === "automatic" ? "Automática" : input.transmission === "manual" ? "Manual" : "CVT"}
-- Combustible: ${input.fuel === "gasoline" ? "Gasolina" : input.fuel === "diesel" ? "Diésel" : input.fuel === "electric" ? "Eléctrico" : input.fuel === "hybrid" ? "Híbrido" : "Gas"}
-${input.city ? `- Ciudad: ${input.city}, Venezuela` : "- País: Venezuela"}
+- Transmision: ${TRANSMISSION_LABELS[input.transmission] || input.transmission}
+- Combustible: ${FUEL_LABELS[input.fuel] || input.fuel}
+${input.color ? `- Color: ${input.color}` : ""}
+${input.doors ? `- Puertas: ${input.doors}` : ""}
+${input.engine ? `- Motor: ${input.engine}` : ""}
+${input.city ? `- Ciudad: ${input.city}, Venezuela` : "- Pais: Venezuela"}
 
-Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin backticks) con esta estructura exacta:
+CONDICIONES DEL VEHICULO:
+${activeConditions.length > 0 ? `SI tiene: ${activeConditions.join(", ")}` : "No se especificaron condiciones positivas"}
+${missingConditions.length > 0 ? `NO tiene: ${missingConditions.join(", ")}` : ""}
+
+CONTEXTO DEL MERCADO VENEZOLANO que DEBES considerar:
+1. Escasez de repuestos: Toyota y Chevrolet tienen mejor disponibilidad. Marcas europeas (BMW, Mercedes) son MUY caros de mantener
+2. Marcas mas demandadas: Toyota > Chevrolet > Ford > Hyundai > Kia (en ese orden)
+3. Kilometraje: en carros post-2015 se tolera mas km. En carros pre-2010, alto km baja mucho el precio
+4. Ciudades: Caracas 10-15% mas caro que provincia. Barcelona/Puerto La Cruz son precios de referencia de provincia
+5. Papeles: vehiculo con papeles vencidos pierde 15-25% de valor
+6. Combustible: diesel es problematico por escasez. Gas (GNV) tiene mercado limitado
+7. Transmision: automatico vale 5-10% mas que sincronico en la mayoria de modelos
+8. Los precios en Venezuela son en USD
+
+INSTRUCCIONES ESTRICTAS:
+- price_min: precio MINIMO absoluto. Por debajo de esto es sospechoso o irreal
+- price_max: precio MAXIMO que el mercado soporta. Por encima no se vende
+- price_suggested: precio optimo para vender en ~30 dias
+- price_market_avg: promedio real del mercado para este vehiculo
+- confidence: 0-100, que tan seguro estas del analisis
+- factors_up: MINIMO 2 factores que SUBEN el precio de este vehiculo especifico
+- factors_down: MINIMO 2 factores que BAJAN el precio de este vehiculo especifico
+- argument_min: explicacion convincente de por que ese es el minimo (2-3 oraciones, en espanol)
+- argument_max: explicacion de por que ese es el maximo (2-3 oraciones, en espanol)
+- argument_suggested: por que el precio sugerido es el optimo (2-3 oraciones, en espanol)
+- market_summary: resumen ejecutivo del mercado para este vehiculo (2-3 oraciones, en espanol)
+
+Responde UNICAMENTE con un objeto JSON valido (sin markdown, sin backticks, sin texto adicional):
 {
-  "suggested_price": <número en USD, precio sugerido>,
-  "market_price_low": <número en USD, precio bajo del rango de mercado>,
-  "market_price_high": <número en USD, precio alto del rango de mercado>,
-  "confidence": <número entre 0 y 1, qué tan seguro estás de la estimación>,
-  "analysis": "<texto en español explicando el análisis, máximo 3 oraciones>"
-}
-
-Considera factores como: estado general esperado para el año y kilometraje, disponibilidad de repuestos en Venezuela, demanda del modelo en el mercado local, y el tipo de combustible/transmisión. Los precios en Venezuela suelen ser en USD.`;
+  "price_min": 0,
+  "price_max": 0,
+  "price_suggested": 0,
+  "price_market_avg": 0,
+  "confidence": 0,
+  "factors_up": [],
+  "factors_down": [],
+  "argument_min": "",
+  "argument_max": "",
+  "argument_suggested": "",
+  "market_summary": ""
+}`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text().trim();

@@ -63,10 +63,6 @@ export async function generateVinyl(
   // Generate the vinyl PNG
   const vinylBuffer = await generateVinylPng({
     slug: typedVehicle.slug,
-    brand: typedVehicle.brand,
-    model: typedVehicle.model,
-    year: typedVehicle.year,
-    price: typedVehicle.price,
   });
 
   // Upload to Supabase Storage

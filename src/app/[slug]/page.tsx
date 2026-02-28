@@ -15,15 +15,17 @@ import {
   TrendingUp,
   Eye,
   ArrowLeft,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { PhotoGallery } from "@/components/vehicle/photo-gallery";
 import { WhatsAppButton } from "@/components/vehicle/whatsapp-button";
 import { ShareButton } from "@/components/vehicle/share-button";
 import { ViewTracker } from "@/components/vehicle/view-tracker";
+import { PriceAnalysisCard } from "@/components/vehicle/price-analysis-card";
 import { createClient } from "@/lib/supabase/server";
 import { VEHICLE_CONDITIONS, APP_NAME, APP_URL } from "@/lib/constants";
-import type { Vehicle, Media, Profile, AiPriceReport } from "@/types";
+import type { Vehicle, Media, Profile } from "@/types";
 
 // Lazy load below-the-fold components
 const FeedbackForm = dynamic(
@@ -107,10 +109,10 @@ async function getVehicle(slug: string) {
     return a.display_order - b.display_order;
   });
 
-  // Fetch AI price report
+  // Fetch AI price report (with new fields)
   const { data: aiReport } = await supabase
     .from("ai_price_reports")
-    .select("suggested_price, market_price_low, market_price_high, confidence, analysis")
+    .select("suggested_price, market_price_low, market_price_high, price_market_avg, confidence, analysis, factors_up, factors_down, market_summary")
     .eq("vehicle_id", typedVehicle.id)
     .order("generated_at", { ascending: false })
     .limit(1)
@@ -121,7 +123,17 @@ async function getVehicle(slug: string) {
     photos,
     video,
     seller: profile as Pick<Profile, "full_name" | "phone" | "city"> | null,
-    aiReport: aiReport as Pick<AiPriceReport, "suggested_price" | "market_price_low" | "market_price_high" | "confidence" | "analysis"> | null,
+    aiReport: aiReport as {
+      suggested_price: number | null;
+      market_price_low: number | null;
+      market_price_high: number | null;
+      price_market_avg: number | null;
+      confidence: number | null;
+      analysis: string | null;
+      factors_up: string[] | null;
+      factors_down: string[] | null;
+      market_summary: string | null;
+    } | null,
   };
 }
 
@@ -164,23 +176,27 @@ export default async function VehicleCardPage({ params }: PageProps) {
 
   const { vehicle, photos, video, seller, aiReport } = data;
 
-  // Compute dynamic price badge
-  let priceBadge: { label: string; className: string } | null = null;
+  // Compute dynamic price badge (semaphore)
+  let priceBadge: { label: string; emoji: string; className: string } | null = null;
   if (aiReport?.market_price_low != null && aiReport?.market_price_high != null) {
-    if (vehicle.price <= aiReport.market_price_low) {
+    const avg = aiReport.price_market_avg ?? (aiReport.market_price_low + aiReport.market_price_high) / 2;
+    if (vehicle.price <= avg * 0.9) {
       priceBadge = {
         label: "Buen precio",
+        emoji: "🟢",
         className: "bg-green-100 text-green-700 border-green-300",
       };
-    } else if (vehicle.price <= aiReport.market_price_high) {
+    } else if (vehicle.price <= avg * 1.1) {
       priceBadge = {
         label: "Precio justo",
-        className: "bg-accent/10 text-accent border-accent/20",
+        emoji: "🔵",
+        className: "bg-blue-100 text-blue-700 border-blue-300",
       };
     } else {
       priceBadge = {
         label: "Por encima del mercado",
-        className: "bg-orange-100 text-orange-700 border-orange-300",
+        emoji: "🟡",
+        className: "bg-yellow-100 text-yellow-700 border-yellow-300",
       };
     }
   }
@@ -261,11 +277,17 @@ export default async function VehicleCardPage({ params }: PageProps) {
                 ${vehicle.price.toLocaleString("en-US", { minimumFractionDigits: 0 })}
               </span>
             </div>
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               {priceBadge && (
                 <Badge className={`${priceBadge.className} border`}>
-                  <TrendingUp className="size-3" />
+                  <span className="mr-0.5">{priceBadge.emoji}</span>
                   {priceBadge.label}
+                </Badge>
+              )}
+              {aiReport && (
+                <Badge className="border border-accent/20 bg-accent/5 text-accent text-[10px]">
+                  <Sparkles className="size-2.5 mr-0.5" />
+                  Precio analizado por IA
                 </Badge>
               )}
               <span className="text-xs text-muted-foreground">
@@ -273,6 +295,19 @@ export default async function VehicleCardPage({ params }: PageProps) {
               </span>
             </div>
           </div>
+
+          {/* AI Price analysis section */}
+          {aiReport?.market_price_low != null && aiReport?.market_price_high != null && (
+            <PriceAnalysisCard
+              price={vehicle.price}
+              min={aiReport.market_price_low}
+              max={aiReport.market_price_high}
+              avg={aiReport.price_market_avg ?? undefined}
+              factorsUp={aiReport.factors_up ?? undefined}
+              factorsDown={aiReport.factors_down ?? undefined}
+              summary={aiReport.market_summary ?? undefined}
+            />
+          )}
 
           {/* WhatsApp CTA */}
           {seller?.phone && (

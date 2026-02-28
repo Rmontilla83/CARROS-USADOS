@@ -27,6 +27,7 @@ type VehicleRow = Pick<
   | "model"
   | "year"
   | "price"
+  | "suggested_price"
   | "slug"
   | "status"
   | "views_count"
@@ -52,7 +53,7 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
   let query = supabase
     .from("vehicles")
     .select(
-      "id, brand, model, year, price, slug, status, views_count, created_at, user_id"
+      "id, brand, model, year, price, suggested_price, slug, status, views_count, created_at, user_id"
     )
     .order("created_at", { ascending: false })
     .limit(50);
@@ -137,8 +138,24 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
                       <TableCell className="text-sm text-muted-foreground">
                         {nameMap.get(v.user_id) || "—"}
                       </TableCell>
-                      <TableCell className="text-sm font-medium">
-                        ${v.price.toLocaleString("en-US")}
+                      <TableCell>
+                        <div className="text-sm font-medium">
+                          ${v.price.toLocaleString("en-US")}
+                        </div>
+                        {v.suggested_price != null && v.suggested_price > 0 && (
+                          <div className="text-[10px] text-muted-foreground">
+                            IA: ${v.suggested_price.toLocaleString("en-US")}
+                            {(() => {
+                              const diff = Math.round(((v.price - v.suggested_price) / v.suggested_price) * 100);
+                              if (diff === 0) return null;
+                              return (
+                                <span className={diff > 0 ? "text-orange-600 ml-1" : "text-green-600 ml-1"}>
+                                  ({diff > 0 ? "+" : ""}{diff}%)
+                                </span>
+                              );
+                            })()}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge className={`border text-[11px] ${statusCfg.className}`}>

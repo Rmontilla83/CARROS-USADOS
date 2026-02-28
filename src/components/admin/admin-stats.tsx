@@ -29,6 +29,7 @@ export async function AdminStats() {
     { count: completedPayments },
     { data: topVehicles },
     { data: recentVehicles },
+    { data: priceData },
   ] = await Promise.all([
     supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("vehicles").select("*", { count: "exact", head: true }),
@@ -47,7 +48,22 @@ export async function AdminStats() {
       .select("id, brand, model, year, slug, views_count, status, published_at")
       .order("published_at", { ascending: false })
       .limit(30),
+    supabase
+      .from("vehicles")
+      .select("price, suggested_price")
+      .eq("status", "active")
+      .not("suggested_price", "is", null),
   ]);
+
+  // Compute avg price vs avg suggested
+  const typedPriceData = (priceData as { price: number; suggested_price: number | null }[]) || [];
+  const avgPublishedPrice = typedPriceData.length > 0
+    ? Math.round(typedPriceData.reduce((sum, v) => sum + v.price, 0) / typedPriceData.length)
+    : 0;
+  const withSuggested = typedPriceData.filter((v) => v.suggested_price != null);
+  const avgSuggestedPrice = withSuggested.length > 0
+    ? Math.round(withSuggested.reduce((sum, v) => sum + (v.suggested_price || 0), 0) / withSuggested.length)
+    : 0;
 
   const totalRevenue = (completedPayments || 0) * PUBLICATION_PRICE_USD;
   const conversionRate =
@@ -207,6 +223,36 @@ export async function AdminStats() {
           </div>
         </div>
       </div>
+
+      {/* Price insight */}
+      {avgSuggestedPrice > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+            <Sparkles className="size-4 text-accent" />
+            Precios: Publicados vs Sugeridos por IA
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Precio promedio publicado</p>
+              <p className="text-xl font-bold text-foreground">${avgPublishedPrice.toLocaleString("en-US")}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Precio promedio sugerido IA</p>
+              <p className="text-xl font-bold text-accent">${avgSuggestedPrice.toLocaleString("en-US")}</p>
+            </div>
+          </div>
+          {avgPublishedPrice > 0 && avgSuggestedPrice > 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Los vendedores publican en promedio un{" "}
+              <span className={avgPublishedPrice > avgSuggestedPrice ? "font-bold text-orange-600" : "font-bold text-green-600"}>
+                {Math.abs(Math.round(((avgPublishedPrice - avgSuggestedPrice) / avgSuggestedPrice) * 100))}%
+                {avgPublishedPrice > avgSuggestedPrice ? " por encima" : " por debajo"}
+              </span>
+              {" "}del precio sugerido por IA ({withSuggested.length} vehiculos con analisis)
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Recent changelog */}
       {recentChangelog && (

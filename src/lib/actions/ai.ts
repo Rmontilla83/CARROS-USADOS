@@ -10,7 +10,11 @@ export interface AnalyzePriceInput {
   mileage: number;
   transmission: string;
   fuel: string;
+  color?: string;
+  doors?: number;
+  engine?: string;
   city?: string;
+  conditions?: Record<string, boolean>;
   vehicleId?: string;
 }
 
@@ -31,7 +35,11 @@ export async function analyzePriceWithAI(
       mileage: input.mileage,
       transmission: input.transmission,
       fuel: input.fuel,
+      color: input.color,
+      doors: input.doors,
+      engine: input.engine,
       city: input.city,
+      conditions: input.conditions,
     });
 
     // If vehicleId is provided, save to database
@@ -40,17 +48,24 @@ export async function analyzePriceWithAI(
 
       await supabase.from("ai_price_reports").insert({
         vehicle_id: input.vehicleId,
-        suggested_price: result.suggested_price,
-        market_price_low: result.market_price_low,
-        market_price_high: result.market_price_high,
+        suggested_price: result.price_suggested,
+        market_price_low: result.price_min,
+        market_price_high: result.price_max,
+        price_market_avg: result.price_market_avg,
         confidence: result.confidence,
-        analysis: result.analysis,
+        analysis: result.market_summary,
+        factors_up: result.factors_up,
+        factors_down: result.factors_down,
+        argument_min: result.argument_min,
+        argument_max: result.argument_max,
+        argument_suggested: result.argument_suggested,
+        market_summary: result.market_summary,
       });
 
       // Update vehicle's suggested_price
       await supabase
         .from("vehicles")
-        .update({ suggested_price: result.suggested_price })
+        .update({ suggested_price: result.price_suggested })
         .eq("id", input.vehicleId);
     }
 
