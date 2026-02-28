@@ -100,7 +100,7 @@ export function AdminSidebar({ userName, userEmail }: Props) {
           className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
         >
           <LayoutDashboard className="size-4 shrink-0" />
-          Ir al Dashboard
+          Dashboard de Vendedor
         </Link>
         <Link
           href="/"
