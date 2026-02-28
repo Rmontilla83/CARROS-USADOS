@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
-import { CreditCard } from "lucide-react";
+"use client";
+
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -9,17 +10,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createClient } from "@/lib/supabase/server";
 import type { Payment, PaymentStatus, PaymentMethod } from "@/types";
-
-export const metadata: Metadata = {
-  title: "Pagos",
-};
 
 type PaymentRow = Pick<
   Payment,
   "id" | "amount" | "currency" | "method" | "status" | "paid_at" | "description" | "created_at"
 >;
+
+interface Props {
+  payments: PaymentRow[];
+}
 
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; className: string }> = {
   completed: {
@@ -50,61 +50,67 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   mercantil_card: "Tarjeta Nacional",
 };
 
-export default async function PaymentsPage() {
-  const supabase = await createClient();
+export function PaymentTable({ payments }: Props) {
+  const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
+  const [methodFilter, setMethodFilter] = useState<PaymentMethod | "all">("all");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: payments } = user
-    ? await supabase
-        .from("payments")
-        .select("id, amount, currency, method, status, paid_at, description, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50)
-    : { data: null };
-
-  const typedPayments = (payments as PaymentRow[]) || [];
+  const filtered = payments.filter((p) => {
+    if (statusFilter !== "all" && p.status !== statusFilter) return false;
+    if (methodFilter !== "all" && p.method !== methodFilter) return false;
+    return true;
+  });
 
   return (
     <div>
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Pagos</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Historial de pagos y transacciones
-        </p>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as PaymentStatus | "all")}
+          className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm text-foreground"
+        >
+          <option value="all">Todos los estados</option>
+          <option value="completed">Completado</option>
+          <option value="pending">Pendiente</option>
+          <option value="failed">Fallido</option>
+          <option value="refunded">Reembolsado</option>
+        </select>
+
+        <select
+          value={methodFilter}
+          onChange={(e) => setMethodFilter(e.target.value as PaymentMethod | "all")}
+          className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm text-foreground"
+        >
+          <option value="all">Todos los métodos</option>
+          <option value="stripe">Stripe</option>
+          <option value="pago_movil">Pago Móvil</option>
+          <option value="bank_transfer">Transferencia</option>
+          <option value="zelle">Zelle</option>
+        </select>
       </div>
 
-      {typedPayments.length === 0 ? (
-        <div className="mt-6 flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-4">
-          <CreditCard className="mt-0.5 size-5 shrink-0 text-primary" />
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              Sin pagos registrados
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Cuando publiques un vehículo y completes el pago, aparecerá aquí.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-6 overflow-hidden rounded-lg border border-border bg-card">
-          {/* Desktop table */}
-          <div className="hidden sm:block">
-            <Table>
-              <TableHeader>
+      {/* Table */}
+      <div className="overflow-hidden rounded-lg border border-border bg-card">
+        <div className="hidden sm:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Descripción</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-right">Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.length === 0 ? (
                 <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
-                  <TableHead className="text-right">Estado</TableHead>
+                  <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                    No se encontraron pagos
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {typedPayments.map((payment) => {
+              ) : (
+                filtered.map((payment) => {
                   const statusCfg = STATUS_CONFIG[payment.status];
                   return (
                     <TableRow key={payment.id}>
@@ -125,22 +131,26 @@ export default async function PaymentsPage() {
                         ${payment.amount.toFixed(2)} {payment.currency}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Badge
-                          className={`border text-[11px] ${statusCfg.className}`}
-                        >
+                        <Badge className={`border text-[11px] ${statusCfg.className}`}>
                           {statusCfg.label}
                         </Badge>
                       </TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-          {/* Mobile cards */}
-          <div className="divide-y divide-border sm:hidden">
-            {typedPayments.map((payment) => {
+        {/* Mobile cards */}
+        <div className="divide-y divide-border sm:hidden">
+          {filtered.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              No se encontraron pagos
+            </p>
+          ) : (
+            filtered.map((payment) => {
               const statusCfg = STATUS_CONFIG[payment.status];
               return (
                 <div key={payment.id} className="p-4">
@@ -148,9 +158,7 @@ export default async function PaymentsPage() {
                     <p className="text-sm font-medium text-foreground">
                       {payment.description || "Publicación de vehículo"}
                     </p>
-                    <Badge
-                      className={`shrink-0 border text-[11px] ${statusCfg.className}`}
-                    >
+                    <Badge className={`shrink-0 border text-[11px] ${statusCfg.className}`}>
                       {statusCfg.label}
                     </Badge>
                   </div>
@@ -169,10 +177,10 @@ export default async function PaymentsPage() {
                   </div>
                 </div>
               );
-            })}
-          </div>
+            })
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   X,
   Home,
   FileText,
+  CreditCard,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,9 +34,10 @@ interface Props {
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/vehicles", label: "Publicaciones", icon: Car },
+  { href: "/admin/payments", label: "Pagos", icon: CreditCard, isNew: true },
   { href: "/admin/qr-orders", label: "Impresión y Entregas", icon: QrCode },
   { href: "/admin/users", label: "Usuarios", icon: Users },
-  { href: "/admin/changelog", label: "Changelog", icon: FileText, isNew: true },
+  { href: "/admin/changelog", label: "Changelog", icon: FileText },
 ];
 
 export function AdminSidebar({ userName, userEmail }: Props) {

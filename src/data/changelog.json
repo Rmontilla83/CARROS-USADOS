@@ -1,5 +1,41 @@
 [
   {
+    "version": "2.1.0",
+    "date": "2026-02-28",
+    "entries": [
+      {
+        "type": "feature",
+        "title": "Pasarela de pagos con Stripe",
+        "description": "Pago obligatorio de $20 para activar publicaciones. Integración completa con Stripe Checkout: creación de sesión, webhook de confirmación, activación automática del vehículo tras el pago."
+      },
+      {
+        "type": "feature",
+        "title": "Checkout con precio en bolívares",
+        "description": "Página de checkout que muestra el precio en USD y su equivalente en bolívares usando la tasa BCV actualizada automáticamente cada 4 horas."
+      },
+      {
+        "type": "feature",
+        "title": "Infraestructura Banco Mercantil",
+        "description": "Preparación completa para pagos con Pago Móvil (C2P), Débito Inmediato y Tarjeta Nacional. Interfaz lista con indicador 'Próximamente'."
+      },
+      {
+        "type": "feature",
+        "title": "Panel de pagos para admin",
+        "description": "Nuevo panel de administración de pagos con estadísticas de ingresos, filtros por estado y método de pago, y tabla detallada de transacciones."
+      },
+      {
+        "type": "feature",
+        "title": "Cron de insight diario con IA",
+        "description": "Endpoint cron que genera un insight diario del marketplace a la 1:00 AM usando Gemini, analizando tendencias de vehículos y métricas de la plataforma."
+      },
+      {
+        "type": "improvement",
+        "title": "Flujo de publicación con pago",
+        "description": "El vehículo ahora se guarda como borrador hasta que se complete el pago. Dashboard muestra badge 'Pendiente de pago' con enlace directo al checkout."
+      }
+    ]
+  },
+  {
     "version": "2.0.0",
     "date": "2026-02-28",
     "entries": [
