@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   Car,
@@ -92,13 +93,19 @@ export default async function Home() {
       <Navbar transparent />
 
       {/* =================== HERO =================== */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#1B4F72] via-[#1a5276] to-[#2E86C1] pt-16">
-        {/* Decorative blobs */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 size-80 rounded-full bg-white/5 blur-3xl" />
-          <div className="absolute bottom-0 -left-20 size-60 rounded-full bg-accent/10 blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 size-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/3 blur-3xl" />
-        </div>
+      <section className="relative overflow-hidden pt-16">
+        {/* Background image */}
+        <Image
+          src="/images/hero-bg.png"
+          alt=""
+          fill
+          priority
+          className="object-cover object-center"
+          sizes="100vw"
+        />
+
+        {/* Dark overlay — stronger on mobile for legibility */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628]/80 via-[#1B4F72]/75 to-[#0a1628]/85 md:from-[#0a1628]/70 md:via-[#1B4F72]/60 md:to-[#0a1628]/75" />
 
         <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
           <div className="mx-auto max-w-3xl text-center">
