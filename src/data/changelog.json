@@ -1,5 +1,26 @@
 [
   {
+    "version": "2.2.0",
+    "date": "2026-02-28",
+    "entries": [
+      {
+        "type": "feature",
+        "title": "Análisis de precio automático con IA",
+        "description": "Al llegar al paso de precio, la IA analiza automáticamente usando toda la info del vehículo incluyendo descripción y condiciones. Se eliminó la opción de omitir — el análisis es obligatorio y el usuario no puede exceder el precio máximo del mercado."
+      },
+      {
+        "type": "feature",
+        "title": "Hero con imagen de producto",
+        "description": "La landing page ahora muestra la foto del Toyota con vinil QR en Lechería como fondo del hero, con overlay gradiente oscuro premium tipo Kavak para máxima legibilidad."
+      },
+      {
+        "type": "improvement",
+        "title": "Optimización de carga móvil — 97% más rápido",
+        "description": "Hero image comprimida de 8.5MB PNG a 87KB WebP (móvil) y 328KB (desktop) con <picture> responsive. Vehicle cards migradas a next/image con WebP automático. Query de views eliminada — se reutilizan datos existentes."
+      }
+    ]
+  },
+  {
     "version": "2.1.0",
     "date": "2026-02-28",
     "entries": [

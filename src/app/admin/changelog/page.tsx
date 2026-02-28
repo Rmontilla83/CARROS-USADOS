@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import changelog from "@/data/changelog.json";
 
 export const metadata: Metadata = {
-  title: "Changelog — Admin",
+  title: "Novedades — Admin",
 };
 
 const TYPE_CONFIG: Record<string, { emoji: string; label: string; className: string }> = {
@@ -17,7 +17,7 @@ export default function ChangelogPage() {
   return (
     <div>
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Changelog</h1>
+        <h1 className="text-2xl font-bold text-foreground">Novedades</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Historial de cambios y actualizaciones de la plataforma
         </p>

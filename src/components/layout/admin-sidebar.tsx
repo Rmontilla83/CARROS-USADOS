@@ -25,6 +25,12 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { createClient } from "@/lib/supabase/client";
+import changelog from "@/data/changelog.json";
+
+// Count entries from releases in the last 7 days
+const recentEntryCount = changelog
+  .filter((r) => Date.now() - new Date(r.date).getTime() < 7 * 24 * 60 * 60 * 1000)
+  .reduce((sum, r) => sum + r.entries.length, 0);
 
 interface Props {
   userName: string;
@@ -37,7 +43,7 @@ const NAV_ITEMS = [
   { href: "/admin/payments", label: "Pagos", icon: CreditCard, isNew: true },
   { href: "/admin/qr-orders", label: "Impresión y Entregas", icon: QrCode },
   { href: "/admin/users", label: "Usuarios", icon: Users },
-  { href: "/admin/changelog", label: "Changelog", icon: FileText },
+  { href: "/admin/changelog", label: "Novedades", icon: FileText, badgeCount: recentEntryCount },
 ];
 
 export function AdminSidebar({ userName, userEmail }: Props) {
@@ -87,6 +93,11 @@ export function AdminSidebar({ userName, userEmail }: Props) {
               {"isNew" in item && item.isNew && (
                 <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white">
                   Nuevo
+                </span>
+              )}
+              {"badgeCount" in item && typeof item.badgeCount === "number" && item.badgeCount > 0 && (
+                <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
+                  {item.badgeCount}
                 </span>
               )}
             </Link>
