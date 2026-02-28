@@ -46,25 +46,6 @@ export async function signUp(formData: FormData): Promise<AuthActionResult> {
     return { error: error.message };
   }
 
-  // Update profile with extra fields (the trigger creates the profile,
-  // but we need to fill in phone, cedula, city)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    await supabase
-      .from("profiles")
-      .update({
-        full_name,
-        phone,
-        cedula,
-        city,
-        state: "Anzoátegui",
-      })
-      .eq("id", user.id);
-  }
-
   redirect("/dashboard");
 }
 

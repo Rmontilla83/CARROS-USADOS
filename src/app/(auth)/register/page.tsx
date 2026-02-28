@@ -88,24 +88,6 @@ export default function RegisterPage() {
       return;
     }
 
-    // Update profile with extra fields
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      await supabase
-        .from("profiles")
-        .update({
-          full_name: data.full_name,
-          phone: data.phone,
-          cedula: data.cedula,
-          city: data.city,
-          state: "Anzoátegui",
-        })
-        .eq("id", user.id);
-    }
-
     router.push("/dashboard");
     router.refresh();
   }
