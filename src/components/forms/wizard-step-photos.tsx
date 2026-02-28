@@ -140,14 +140,21 @@ export function WizardStepPhotos({ data, onNext, onBack }: Props) {
   }
 
   function handleNext() {
-    const uploadedPhotos = photos.filter((p) => p.storagePath !== null);
-    if (uploadedPhotos.length < MIN_PHOTOS) {
-      setError(`Sube al menos ${MIN_PHOTOS} fotos`);
-      return;
-    }
     const uploading = photos.some((p) => p.uploading);
     if (uploading) {
       setError("Espera a que terminen de subir las fotos");
+      return;
+    }
+    const uploadedPhotos = photos.filter((p) => p.storagePath !== null);
+    const failedCount = photos.length - uploadedPhotos.length;
+    if (uploadedPhotos.length < MIN_PHOTOS) {
+      if (failedCount > 0) {
+        setError(
+          `${failedCount} foto(s) fallaron al subir. Elimínalas e intenta de nuevo. Necesitas al menos ${MIN_PHOTOS} fotos subidas correctamente.`
+        );
+      } else {
+        setError(`Sube al menos ${MIN_PHOTOS} fotos`);
+      }
       return;
     }
     onNext({ photos, coverPhotoIndex: coverIndex });
@@ -223,6 +230,15 @@ export function WizardStepPhotos({ data, onNext, onBack }: Props) {
               {photo.uploading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                   <div className="size-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                </div>
+              )}
+
+              {/* Failed overlay */}
+              {!photo.uploading && !photo.storagePath && (
+                <div className="absolute inset-0 flex items-center justify-center bg-red-900/50">
+                  <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    ERROR
+                  </span>
                 </div>
               )}
 
