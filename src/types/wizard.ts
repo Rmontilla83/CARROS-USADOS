@@ -41,12 +41,12 @@ export interface WizardData {
   // Step 3 - Video
   video: UploadedVideo | null;
 
-  // Step 4 - Price
-  price: number;
-
-  // Step 5 - Description
+  // Step 4 - Description
   description: string;
   conditions: Record<string, boolean>;
+
+  // Step 5 - Price
+  price: number;
 
   // Step 6 - Delivery
   delivery: DeliveryData;

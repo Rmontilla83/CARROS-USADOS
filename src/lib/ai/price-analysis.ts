@@ -29,6 +29,7 @@ interface PriceAnalysisInput {
   engine?: string;
   city?: string;
   conditions?: Record<string, boolean>;
+  description?: string;
 }
 
 const TRANSMISSION_LABELS: Record<string, string> = {
@@ -100,6 +101,9 @@ ${input.city ? `- Ciudad: ${input.city}, Venezuela` : "- Pais: Venezuela"}
 CONDICIONES DEL VEHICULO:
 ${activeConditions.length > 0 ? `SI tiene: ${activeConditions.join(", ")}` : "No se especificaron condiciones positivas"}
 ${missingConditions.length > 0 ? `NO tiene: ${missingConditions.join(", ")}` : ""}
+
+DESCRIPCION DEL VENDEDOR:
+${input.description || "No proporcionada"}
 
 CONTEXTO DEL MERCADO VENEZOLANO que DEBES considerar:
 1. Escasez de repuestos: Toyota y Chevrolet tienen mejor disponibilidad. Marcas europeas (BMW, Mercedes) son MUY caros de mantener

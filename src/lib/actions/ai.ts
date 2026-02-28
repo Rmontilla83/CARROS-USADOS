@@ -15,6 +15,7 @@ export interface AnalyzePriceInput {
   engine?: string;
   city?: string;
   conditions?: Record<string, boolean>;
+  description?: string;
   vehicleId?: string;
 }
 
@@ -40,6 +41,7 @@ export async function analyzePriceWithAI(
       engine: input.engine,
       city: input.city,
       conditions: input.conditions,
+      description: input.description,
     });
 
     // If vehicleId is provided, save to database

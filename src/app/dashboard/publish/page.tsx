@@ -16,8 +16,8 @@ const STEPS = [
   { label: "Datos", shortLabel: "Datos" },
   { label: "Fotos", shortLabel: "Fotos" },
   { label: "Video", shortLabel: "Video" },
-  { label: "Precio", shortLabel: "Precio" },
   { label: "Descripción", shortLabel: "Desc." },
+  { label: "Precio", shortLabel: "Precio" },
   { label: "Entrega", shortLabel: "Envío" },
   { label: "Resumen", shortLabel: "Listo" },
 ] as const;
@@ -95,14 +95,14 @@ export default function PublishPage() {
           <WizardStepVideo data={data} onNext={handleNext} onBack={handleBack} />
         )}
         {step === 3 && (
-          <WizardStepPrice data={data} onNext={handleNext} onBack={handleBack} />
-        )}
-        {step === 4 && (
           <WizardStepDescription
             data={data}
             onNext={handleNext}
             onBack={handleBack}
           />
+        )}
+        {step === 4 && (
+          <WizardStepPrice data={data} onNext={handleNext} onBack={handleBack} />
         )}
         {step === 5 && (
           <WizardStepDelivery

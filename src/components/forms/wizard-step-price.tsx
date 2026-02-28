@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -12,8 +12,8 @@ import {
   ChevronUp,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +38,7 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
   const [aiResult, setAiResult] = useState<AiPriceResponse | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
-  const [skippedAi, setSkippedAi] = useState(false);
+  const hasTriggered = useRef(false);
 
   const {
     register,
@@ -65,10 +65,10 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
     return "in_range" as const;
   }, [currentPrice, aiResult]);
 
-  const canSubmit = !aiResult || (priceStatus && priceStatus !== "below_min" && priceStatus !== "above_max");
+  const canSubmit = !!aiResult && !!priceStatus && priceStatus !== "below_min" && priceStatus !== "above_max";
 
   function onSubmit(values: VehiclePriceFormData) {
-    if (aiResult && !canSubmit) return;
+    if (!canSubmit) return;
     onNext({ price: values.price });
   }
 
@@ -77,7 +77,6 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
     setAnalyzing(true);
     setAiError(null);
     setAiResult(null);
-    setSkippedAi(false);
 
     const result: AnalyzePriceResult = await analyzePriceWithAI({
       brand: data.brand,
@@ -90,6 +89,7 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
       doors: data.doors,
       engine: data.engine,
       conditions: data.conditions,
+      description: data.description,
     });
 
     if (result.success && result.data) {
@@ -101,14 +101,18 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
     setAnalyzing(false);
   }
 
+  // Auto-trigger AI analysis on mount
+  useEffect(() => {
+    if (hasTriggered.current) return;
+    hasTriggered.current = true;
+    handleAnalyze();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function useSuggestedPrice() {
     if (aiResult?.price_suggested) {
       setValue("price", aiResult.price_suggested, { shouldValidate: true });
     }
-  }
-
-  function handleSkipAi() {
-    setSkippedAi(true);
   }
 
   // Range bar position calculation
@@ -119,83 +123,44 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
     return Math.max(0, Math.min(100, ((price - aiResult.price_min) / range) * 100));
   }
 
-  const canAnalyze = data.brand && data.model && data.year;
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <h2 className="text-lg font-semibold text-foreground">Precio</h2>
 
-      {/* AI Analysis trigger */}
-      {!aiResult && !skippedAi && (
-        <div className="rounded-xl border border-accent/30 bg-gradient-to-br from-accent/5 to-primary/5 p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="size-5 text-accent" />
-            <span className="text-sm font-bold text-foreground">
-              Analisis de Mercado con IA
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">
-            Nuestra IA analiza el mercado venezolano y te da un rango de precios
-            realista con argumentos. Esto te ayuda a vender mas rapido y obtener
-            el mejor precio.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              onClick={handleAnalyze}
-              disabled={analyzing || !canAnalyze}
-              className="gap-2 bg-accent text-white hover:bg-accent/90"
-            >
-              {analyzing ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" />
-                  Analizando mercado...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="size-4" />
-                  Analizar precio con IA
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleSkipAi}
-              className="text-muted-foreground"
-            >
-              Omitir analisis
-            </Button>
-          </div>
-          {aiError && (
-            <div className="mt-3 rounded-lg bg-destructive/10 p-3">
-              <p className="text-sm text-destructive">{aiError}</p>
+      {/* Loading state */}
+      {analyzing && (
+        <div className="rounded-xl border border-accent/30 bg-gradient-to-br from-accent/5 to-primary/5 p-8">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Loader2 className="size-8 text-accent animate-spin" />
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                Analizando el mercado...
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Nuestra IA esta evaluando precios en el mercado venezolano
+              </p>
             </div>
-          )}
+          </div>
         </div>
       )}
 
-      {/* Skip warning */}
-      {skippedAi && !aiResult && (
-        <div className="flex items-start gap-2 rounded-lg border border-yellow-300 bg-yellow-50 p-3">
-          <AlertTriangle className="size-4 shrink-0 text-yellow-600 mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-yellow-800">
-              Sin analisis de IA
-            </p>
-            <p className="text-xs text-yellow-700 mt-0.5">
-              Tu publicacion no tendra badge de &quot;precio verificado&quot;. Los compradores
-              confian mas en precios analizados por IA.
-            </p>
+      {/* Error state with retry */}
+      {!analyzing && aiError && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <XCircle className="size-6 text-destructive" />
+            <div>
+              <p className="text-sm font-medium text-destructive">{aiError}</p>
+            </div>
             <Button
               type="button"
-              variant="ghost"
+              onClick={handleAnalyze}
+              variant="outline"
               size="sm"
-              onClick={() => { setSkippedAi(false); handleAnalyze(); }}
-              className="mt-1 h-7 text-xs text-yellow-700 hover:text-yellow-900"
+              className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
             >
-              Analizar ahora
+              <RefreshCw className="size-4" />
+              Reintentar
             </Button>
           </div>
         </div>
@@ -357,6 +322,7 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
             step="0.01"
             placeholder="Ej: 8500"
             className="pl-7"
+            disabled={analyzing}
             {...register("price", { valueAsNumber: true })}
             aria-invalid={!!errors.price || priceStatus === "below_min" || priceStatus === "above_max"}
           />
@@ -410,7 +376,7 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
           type="submit"
           className="bg-accent text-accent-foreground hover:bg-accent/90"
           size="lg"
-          disabled={aiResult ? !canSubmit : false}
+          disabled={!canSubmit || analyzing}
         >
           Siguiente
         </Button>
