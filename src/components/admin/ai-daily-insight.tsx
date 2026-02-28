@@ -31,7 +31,7 @@ export function AiDailyInsight() {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
           <Sparkles className="size-4 text-accent" />
-          Insight del dia — Gemini AI
+          Insight AI del dia
         </h3>
         <Button
           variant="ghost"

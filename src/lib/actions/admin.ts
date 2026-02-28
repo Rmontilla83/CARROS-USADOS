@@ -165,90 +165,80 @@ export async function generateDailyInsight(): Promise<{
   const auth = await requireAdmin();
   if ("error" in auth) return { success: false, error: (auth as ActionResult).error };
 
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
 
-  // Gather platform stats for AI analysis
-  const now = new Date();
-  const todayStr = now.toISOString().split("T")[0];
-  const yesterdayStr = new Date(now.getTime() - 86400000).toISOString().split("T")[0];
-  const weekAgoStr = new Date(now.getTime() - 7 * 86400000).toISOString().split("T")[0];
+    // Gather platform stats — each query wrapped to avoid one failure breaking all
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
+    const weekAgoStr = new Date(now.getTime() - 7 * 86400000).toISOString().split("T")[0];
 
-  const [
-    { count: totalVehicles },
-    { count: activeVehicles },
-    { count: soldVehicles },
-    { count: totalUsers },
-    { count: pendingQr },
-    { data: recentVehicles },
-    { data: recentFeedback },
-    { count: todayViews },
-    { count: weekViews },
-  ] = await Promise.all([
-    supabase.from("vehicles").select("*", { count: "exact", head: true }),
-    supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "active"),
-    supabase.from("vehicles").select("*", { count: "exact", head: true }).eq("status", "sold"),
-    supabase.from("profiles").select("*", { count: "exact", head: true }),
-    supabase.from("qr_orders").select("*", { count: "exact", head: true }).eq("status", "pending"),
-    supabase
+    const safeCount = async (
+      table: string,
+      filter?: { col: string; val: string }
+    ): Promise<number> => {
+      let q = supabase.from(table).select("*", { count: "exact", head: true });
+      if (filter) q = q.eq(filter.col, filter.val);
+      const { count } = await q;
+      return count || 0;
+    };
+
+    const [totalVehicles, activeVehicles, soldVehicles, totalUsers, pendingQr] =
+      await Promise.all([
+        safeCount("vehicles"),
+        safeCount("vehicles", { col: "status", val: "active" }),
+        safeCount("vehicles", { col: "status", val: "sold" }),
+        safeCount("profiles"),
+        safeCount("qr_orders", { col: "status", val: "pending" }),
+      ]);
+
+    // Recent vehicles (safe)
+    const { data: recentVehicles } = await supabase
       .from("vehicles")
       .select("brand, model, year, price, views_count, status, created_at")
       .gte("created_at", weekAgoStr)
       .order("created_at", { ascending: false })
-      .limit(20),
-    supabase
+      .limit(20);
+
+    // Feedback summary (may be empty)
+    const { data: recentFeedback } = await supabase
       .from("feedback")
-      .select("price_opinion, rating")
+      .select("price_opinion")
       .gte("created_at", weekAgoStr)
-      .limit(50),
-    supabase
-      .from("analytics_events")
-      .select("*", { count: "exact", head: true })
-      .eq("event_type", "vehicle_view")
-      .gte("created_at", todayStr),
-    supabase
-      .from("analytics_events")
-      .select("*", { count: "exact", head: true })
-      .eq("event_type", "vehicle_view")
-      .gte("created_at", weekAgoStr),
-  ]);
+      .limit(50);
 
-  // Calculate feedback summary
-  const feedbackSummary = (recentFeedback || []).reduce(
-    (acc, f) => {
-      const opinion = (f as { price_opinion: string }).price_opinion;
-      acc[opinion] = (acc[opinion] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
+    const feedbackSummary = (recentFeedback || []).reduce(
+      (acc, f) => {
+        const opinion = (f as { price_opinion: string }).price_opinion;
+        acc[opinion] = (acc[opinion] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-  // Recent vehicles summary
-  const vehiclesList = (recentVehicles || [])
-    .slice(0, 10)
-    .map((v) => {
-      const veh = v as { brand: string; model: string; year: number; price: number; views_count: number; status: string };
-      return `${veh.brand} ${veh.model} ${veh.year} - $${veh.price} (${veh.views_count} visitas, ${veh.status})`;
-    })
-    .join("\n");
+    const vehiclesList = (recentVehicles || [])
+      .slice(0, 10)
+      .map((v) => {
+        const veh = v as { brand: string; model: string; year: number; price: number; views_count: number; status: string };
+        return `${veh.brand} ${veh.model} ${veh.year} - $${veh.price} (${veh.views_count} visitas, ${veh.status})`;
+      })
+      .join("\n");
 
-  try {
     const { GoogleGenerativeAI } = await import("@google/generative-ai");
     const apiKey = process.env.GOOGLE_AI_API_KEY;
     if (!apiKey) return { success: false, error: "API de IA no configurada" };
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `Eres el analista de datos de CarrosUsados, un marketplace de vehículos usados en Venezuela (Anzoátegui). Genera un insight diario breve y accionable para el equipo admin.
 
 Datos de hoy (${todayStr}):
-- Total publicaciones: ${totalVehicles || 0}
-- Publicaciones activas: ${activeVehicles || 0}
-- Vehículos vendidos: ${soldVehicles || 0}
-- Usuarios registrados: ${totalUsers || 0}
-- QR pendientes de imprimir: ${pendingQr || 0}
-- Visitas hoy: ${todayViews || 0}
-- Visitas últimos 7 días: ${weekViews || 0}
+- Total publicaciones: ${totalVehicles}
+- Publicaciones activas: ${activeVehicles}
+- Vehículos vendidos: ${soldVehicles}
+- Usuarios registrados: ${totalUsers}
+- QR pendientes de imprimir: ${pendingQr}
 - Feedback de compradores esta semana: ${JSON.stringify(feedbackSummary)}
 
 Publicaciones recientes:
@@ -267,6 +257,7 @@ Responde SOLO con el texto del insight, sin formato markdown, sin comillas, sin 
     return { success: true, insight };
   } catch (err) {
     console.error("AI insight error:", err);
-    return { success: false, error: "No se pudo generar el insight." };
+    const message = err instanceof Error ? err.message : "No se pudo generar el insight.";
+    return { success: false, error: message };
   }
 }
