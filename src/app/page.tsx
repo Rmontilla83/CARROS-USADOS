@@ -84,83 +84,92 @@ export default async function Home() {
     <div className="flex min-h-screen flex-col">
       <Navbar transparent />
 
-      {/* =================== HERO =================== */}
-      <section className="relative overflow-hidden pt-16">
-        {/* Background image — mobile: 88KB webp, desktop: 335KB webp */}
-        <picture>
-          <source media="(max-width: 768px)" srcSet="/images/hero-bg-mobile.webp" />
-          <source srcSet="/images/hero-bg.webp" />
-          <img
-            src="/images/hero-bg.webp"
-            alt=""
-            fetchPriority="high"
-            decoding="async"
-            className="absolute inset-0 size-full object-cover object-center"
-          />
-        </picture>
+      {/* =================== HERO (split 50/50) =================== */}
+      <section className="relative overflow-hidden">
+        <div className="flex flex-col md:flex-row">
+          {/* Image — top on mobile (40vh), right on desktop */}
+          <div className="relative h-[40vh] w-full md:order-last md:h-auto md:min-h-[600px] md:w-1/2 lg:min-h-[700px]">
+            <picture>
+              <source media="(max-width: 768px)" srcSet="/images/hero-bg-mobile.webp" />
+              <source srcSet="/images/hero-bg.webp" />
+              <img
+                src="/images/hero-bg.webp"
+                alt="Persona escaneando código QR en vehículo"
+                fetchPriority="high"
+                decoding="async"
+                className="absolute inset-0 size-full object-cover object-center"
+              />
+            </picture>
+            {/* Desktop: diagonal gradient transition from blue to image */}
+            <div
+              className="absolute inset-y-0 -left-4 hidden w-32 bg-gradient-to-r from-[#1B4F72] via-[#1B4F72]/40 to-transparent md:block"
+              style={{ transform: "skewX(-3deg)" }}
+            />
+            {/* Mobile: gradient fade from image to blue section below */}
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#1B4F72] to-transparent md:hidden" />
+          </div>
 
-        {/* Dark overlay — stronger on mobile for legibility */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628]/80 via-[#1B4F72]/75 to-[#0a1628]/85 md:from-[#0a1628]/70 md:via-[#1B4F72]/60 md:to-[#0a1628]/75" />
-
-        <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:py-36">
-          <div className="mx-auto max-w-3xl text-center">
-            {/* Trust badge */}
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-white/90 backdrop-blur-sm">
-              <QrCode className="size-4" />
-              <span>La nueva forma de vender carros en Venezuela</span>
-            </div>
-
-            <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Tu carro es tu{" "}
-              <span className="relative">
-                <span className="relative z-10 text-accent">mejor vitrina</span>
-              </span>
-            </h1>
-
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-white/75 sm:text-xl">
-              Publica tu vehículo, recibe un vinil QR profesional, pégalo en tu carro y
-              deja que los compradores escaneen para ver todos los detalles.
-            </p>
-
-            <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-              <Link
-                href="/register"
-                className="group flex items-center gap-2 rounded-xl bg-accent px-8 py-4 text-lg font-bold text-white shadow-xl shadow-accent/25 transition-all hover:bg-accent/90 hover:shadow-2xl hover:shadow-accent/30"
-              >
-                Publicar mi carro — ${PUBLICATION_PRICE_USD}
-                <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" />
-              </Link>
-              <Link
-                href="/catalogo"
-                className="flex items-center gap-2 rounded-xl border border-white/20 px-6 py-4 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/10"
-              >
-                <Eye className="size-4" />
-                Ver vehículos disponibles
-              </Link>
-            </div>
-
-            {/* Social proof mini stats */}
-            <div className="mt-12 flex items-center justify-center gap-8 text-white/60">
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">{totalVehicles || 0}+</p>
-                <p className="text-xs">Vehículos</p>
+          {/* Text content — bottom on mobile, left on desktop */}
+          <div className="relative z-10 flex w-full items-center bg-[#1B4F72] px-6 pb-20 pt-8 sm:px-10 md:w-1/2 md:pb-24 md:pt-28 lg:px-16 xl:px-20">
+            <div className="w-full max-w-xl">
+              {/* Trust badge */}
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm text-white/90 backdrop-blur-sm">
+                <QrCode className="size-4" />
+                <span>La nueva forma de vender carros en Venezuela</span>
               </div>
-              <div className="h-8 w-px bg-white/20" />
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">{totalViews || 0}+</p>
-                <p className="text-xs">Visitas</p>
+
+              <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+                Tu carro es tu{" "}
+                <span className="relative">
+                  <span className="relative z-10 text-accent">mejor vitrina</span>
+                </span>
+              </h1>
+
+              <p className="mt-6 max-w-md text-lg leading-relaxed text-white/75 sm:text-xl">
+                Publica tu vehículo, recibe un vinil QR profesional, pégalo en tu carro y
+                deja que los compradores escaneen para ver todos los detalles.
+              </p>
+
+              <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+                <Link
+                  href="/register"
+                  className="group flex items-center gap-2 rounded-xl bg-accent px-8 py-4 text-lg font-bold text-white shadow-xl shadow-accent/25 transition-all hover:bg-accent/90 hover:shadow-2xl hover:shadow-accent/30"
+                >
+                  Publicar mi carro — ${PUBLICATION_PRICE_USD}
+                  <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" />
+                </Link>
+                <Link
+                  href="/catalogo"
+                  className="flex items-center gap-2 rounded-xl border border-white/20 px-6 py-4 text-sm font-medium text-white transition-colors hover:bg-white/10"
+                >
+                  <Eye className="size-4" />
+                  Ver vehículos disponibles
+                </Link>
               </div>
-              <div className="h-8 w-px bg-white/20" />
-              <div className="text-center">
-                <p className="text-2xl font-bold text-white">3</p>
-                <p className="text-xs">Ciudades</p>
+
+              {/* Social proof mini stats */}
+              <div className="mt-12 flex items-center gap-8 text-white/60">
+                <div>
+                  <p className="text-2xl font-bold text-white">{totalVehicles || 0}+</p>
+                  <p className="text-xs">Vehículos</p>
+                </div>
+                <div className="h-8 w-px bg-white/20" />
+                <div>
+                  <p className="text-2xl font-bold text-white">{totalViews || 0}+</p>
+                  <p className="text-xs">Visitas</p>
+                </div>
+                <div className="h-8 w-px bg-white/20" />
+                <div>
+                  <p className="text-2xl font-bold text-white">3</p>
+                  <p className="text-xs">Ciudades</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Wave divider */}
-        <div className="absolute bottom-0 left-0 right-0">
+        <div className="absolute bottom-0 left-0 right-0 z-20">
           <svg viewBox="0 0 1440 80" fill="none" className="w-full">
             <path d="M0 80h1440V30C1200 70 960 0 720 30S240 80 0 50v30z" fill="white" />
           </svg>
