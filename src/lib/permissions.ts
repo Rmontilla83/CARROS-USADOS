@@ -58,6 +58,14 @@ export function canChangeRoles(role: UserRole): boolean {
   return role === "admin";
 }
 
+export function canCreateUsers(role: UserRole): boolean {
+  return role === "admin";
+}
+
+export function canDeleteUsers(role: UserRole): boolean {
+  return role === "admin";
+}
+
 export function canViewPayments(role: UserRole): boolean {
   return role === "admin" || role === "analyst" || role === "support";
 }

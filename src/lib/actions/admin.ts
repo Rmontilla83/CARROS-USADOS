@@ -8,7 +8,10 @@ import {
   canApprovePayments,
   canViewDashboard,
   canChangeRoles,
+  canCreateUsers,
+  canDeleteUsers,
 } from "@/lib/permissions";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { VehicleStatus, QrOrderStatus, Profile, UserRole } from "@/types";
 
 interface ActionResult {
@@ -407,5 +410,95 @@ export async function rejectPayment(
   }
 
   revalidatePath("/admin/payments");
+  return { success: true };
+}
+
+/**
+ * Create an internal team user. Admin only.
+ */
+export async function createInternalUser({
+  fullName,
+  email,
+  password,
+  role,
+}: {
+  fullName: string;
+  email: string;
+  password: string;
+  role: UserRole;
+}): Promise<ActionResult> {
+  const auth = await requireRole("admin");
+  if (!auth.ok) return auth.result;
+
+  if (!canCreateUsers(auth.role)) {
+    return { success: false, error: "No autorizado para crear usuarios" };
+  }
+
+  const adminClient = createAdminClient();
+
+  // Create auth user — the DB trigger will auto-create a profile with role "seller"
+  const { data, error: createError } = await adminClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name: fullName },
+  });
+
+  if (createError) {
+    console.error("Create internal user error:", createError);
+    return { success: false, error: createError.message };
+  }
+
+  // Update the profile to the chosen internal role (trigger defaults to seller)
+  const { error: updateError } = await adminClient
+    .from("profiles")
+    .update({ role })
+    .eq("id", data.user.id);
+
+  if (updateError) {
+    console.error("Update new user role error:", updateError);
+    return { success: false, error: "Usuario creado pero no se pudo asignar el rol." };
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+/**
+ * Delete a user. Admin only.
+ */
+export async function deleteUser(userId: string): Promise<ActionResult> {
+  const auth = await requireRole("admin");
+  if (!auth.ok) return auth.result;
+
+  if (!canDeleteUsers(auth.role)) {
+    return { success: false, error: "No autorizado para eliminar usuarios" };
+  }
+
+  if (auth.userId === userId) {
+    return { success: false, error: "No puedes eliminarte a ti mismo" };
+  }
+
+  const adminClient = createAdminClient();
+
+  // Delete profile first, then auth user
+  const { error: profileError } = await adminClient
+    .from("profiles")
+    .delete()
+    .eq("id", userId);
+
+  if (profileError) {
+    console.error("Delete profile error:", profileError);
+    return { success: false, error: "Error al eliminar el perfil." };
+  }
+
+  const { error: authError } = await adminClient.auth.admin.deleteUser(userId);
+
+  if (authError) {
+    console.error("Delete auth user error:", authError);
+    return { success: false, error: "Perfil eliminado pero error al eliminar cuenta auth." };
+  }
+
+  revalidatePath("/admin/users");
   return { success: true };
 }
