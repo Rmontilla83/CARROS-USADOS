@@ -78,15 +78,7 @@ export default async function Home() {
     .select("*", { count: "exact", head: true })
     .eq("status", "active");
 
-  const { data: viewsData } = await supabase
-    .from("vehicles")
-    .select("views_count")
-    .eq("status", "active");
-
-  const totalViews = (viewsData || []).reduce(
-    (sum, v: { views_count: number }) => sum + v.views_count,
-    0
-  );
+  const totalViews = typedVehicles.reduce((sum, v) => sum + (v.views_count || 0), 0);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -94,15 +86,18 @@ export default async function Home() {
 
       {/* =================== HERO =================== */}
       <section className="relative overflow-hidden pt-16">
-        {/* Background image */}
-        <Image
-          src="/images/hero-bg.png"
-          alt=""
-          fill
-          priority
-          className="object-cover object-center"
-          sizes="100vw"
-        />
+        {/* Background image — mobile: 88KB webp, desktop: 335KB webp */}
+        <picture>
+          <source media="(max-width: 768px)" srcSet="/images/hero-bg-mobile.webp" />
+          <source srcSet="/images/hero-bg.webp" />
+          <img
+            src="/images/hero-bg.webp"
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            className="absolute inset-0 size-full object-cover object-center"
+          />
+        </picture>
 
         {/* Dark overlay — stronger on mobile for legibility */}
         <div className="absolute inset-0 bg-gradient-to-b from-[#0a1628]/80 via-[#1B4F72]/75 to-[#0a1628]/85 md:from-[#0a1628]/70 md:via-[#1B4F72]/60 md:to-[#0a1628]/75" />
@@ -292,11 +287,12 @@ export default async function Home() {
                     >
                       <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
                         {coverUrl ? (
-                          <img
+                          <Image
                             src={coverUrl}
                             alt={`${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
-                            loading="lazy"
-                            className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-105"
                           />
                         ) : (
                           <div className="flex size-full items-center justify-center">
