@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { Upload, X, Star, GripVertical } from "lucide-react";
+import { Upload, X, Star, GripVertical, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { MIN_PHOTOS, MAX_PHOTOS } from "@/lib/constants";
@@ -26,6 +26,7 @@ export function WizardStepPhotos({ data, onNext, onBack }: Props) {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const dragItemRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const uploadToStorage = useCallback(
     async (photo: UploadedPhoto): Promise<UploadedPhoto> => {
@@ -178,28 +179,57 @@ export function WizardStepPhotos({ data, onNext, onBack }: Props) {
         </div>
       )}
 
-      {/* Drop zone */}
-      <div
-        onDrop={handleDrop}
-        onDragOver={(e) => e.preventDefault()}
-        onClick={() => fileInputRef.current?.click()}
-        className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-8 transition-colors hover:border-primary hover:bg-secondary/50"
-      >
-        <Upload className="mb-2 size-8 text-muted-foreground" />
-        <p className="text-sm font-medium text-foreground">
-          Arrastra fotos aquí o haz clic para seleccionar
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          JPG, PNG o WebP. {photos.length}/{MAX_PHOTOS} fotos
-        </p>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          className="hidden"
-          onChange={(e) => e.target.files && handleFiles(e.target.files)}
-        />
+      {/* Drop zone + camera */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div
+          onDrop={handleDrop}
+          onDragOver={(e) => e.preventDefault()}
+          onClick={() => fileInputRef.current?.click()}
+          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-8 transition-colors hover:border-primary hover:bg-secondary/50"
+        >
+          <Upload className="mb-2 size-8 text-muted-foreground" />
+          <p className="text-sm font-medium text-foreground">
+            Seleccionar de galería
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            JPG, PNG o WebP. {photos.length}/{MAX_PHOTOS} fotos
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) handleFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </div>
+
+        <div
+          onClick={() => cameraInputRef.current?.click()}
+          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-accent/40 bg-accent/5 p-8 transition-colors hover:border-accent hover:bg-accent/10"
+        >
+          <Camera className="mb-2 size-8 text-accent" />
+          <p className="text-sm font-medium text-foreground">
+            Tomar foto
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Usar cámara del teléfono
+          </p>
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files) handleFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </div>
       </div>
 
       {/* Photo grid */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload, X, Film } from "lucide-react";
+import { Upload, X, Film, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { MAX_VIDEO_DURATION_SECONDS } from "@/lib/constants";
@@ -17,6 +17,7 @@ export function WizardStepVideo({ data, onNext, onBack }: Props) {
   const [video, setVideo] = useState<UploadedVideo | null>(data.video);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(file: File) {
     setError(null);
@@ -86,27 +87,55 @@ export function WizardStepVideo({ data, onNext, onBack }: Props) {
       )}
 
       {!video ? (
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 transition-colors hover:border-primary hover:bg-secondary/50"
-        >
-          <Film className="mb-2 size-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">
-            Haz clic para seleccionar un video
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            MP4, WebM o MOV. Máximo 60 segundos.
-          </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="video/mp4,video/webm,video/quicktime"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFile(file);
-            }}
-          />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 transition-colors hover:border-primary hover:bg-secondary/50"
+          >
+            <Film className="mb-2 size-10 text-muted-foreground" />
+            <p className="text-sm font-medium text-foreground">
+              Seleccionar de galería
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              MP4, WebM o MOV. Máximo {MAX_VIDEO_DURATION_SECONDS} seg.
+            </p>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+                e.target.value = "";
+              }}
+            />
+          </div>
+
+          <div
+            onClick={() => cameraInputRef.current?.click()}
+            className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-accent/40 bg-accent/5 p-12 transition-colors hover:border-accent hover:bg-accent/10"
+          >
+            <Camera className="mb-2 size-10 text-accent" />
+            <p className="text-sm font-medium text-foreground">
+              Grabar video
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Usar cámara del teléfono
+            </p>
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="video/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFile(file);
+                e.target.value = "";
+              }}
+            />
+          </div>
         </div>
       ) : (
         <div className="relative overflow-hidden rounded-lg border border-border">
