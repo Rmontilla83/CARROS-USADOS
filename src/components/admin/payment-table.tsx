@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Check, X, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -10,7 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Payment, PaymentStatus, PaymentMethod } from "@/types";
+import { canApprovePayments } from "@/lib/permissions";
+import { approvePayment, rejectPayment } from "@/lib/actions/admin";
+import type { Payment, PaymentStatus, PaymentMethod, UserRole } from "@/types";
 
 type PaymentRow = Pick<
   Payment,
@@ -19,6 +24,7 @@ type PaymentRow = Pick<
 
 interface Props {
   payments: PaymentRow[];
+  userRole: UserRole;
 }
 
 const STATUS_CONFIG: Record<PaymentStatus, { label: string; className: string }> = {
@@ -50,9 +56,66 @@ const METHOD_LABELS: Record<PaymentMethod, string> = {
   mercantil_card: "Tarjeta Nacional",
 };
 
-export function PaymentTable({ payments }: Props) {
+function PaymentActions({ paymentId, status, userRole }: { paymentId: string; status: PaymentStatus; userRole: UserRole }) {
+  const router = useRouter();
+  const [loading, setLoading] = useState<string | null>(null);
+
+  if (status !== "pending" || !canApprovePayments(userRole)) return null;
+
+  async function handleApprove() {
+    setLoading("approve");
+    const result = await approvePayment(paymentId);
+    if (result.success) router.refresh();
+    setLoading(null);
+  }
+
+  async function handleReject() {
+    const reason = prompt("Razón del rechazo:");
+    if (!reason) return;
+    setLoading("reject");
+    const result = await rejectPayment(paymentId, reason);
+    if (result.success) router.refresh();
+    setLoading(null);
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      <Button
+        onClick={handleApprove}
+        disabled={loading !== null}
+        size="sm"
+        variant="ghost"
+        className="h-7 px-2 text-accent hover:bg-accent/10 hover:text-accent"
+      >
+        {loading === "approve" ? (
+          <Loader2 className="size-3.5 animate-spin" />
+        ) : (
+          <Check className="size-3.5" />
+        )}
+        <span className="hidden sm:inline">Aprobar</span>
+      </Button>
+      <Button
+        onClick={handleReject}
+        disabled={loading !== null}
+        size="sm"
+        variant="ghost"
+        className="h-7 px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+      >
+        {loading === "reject" ? (
+          <Loader2 className="size-3.5 animate-spin" />
+        ) : (
+          <X className="size-3.5" />
+        )}
+        <span className="hidden sm:inline">Rechazar</span>
+      </Button>
+    </div>
+  );
+}
+
+export function PaymentTable({ payments, userRole }: Props) {
   const [statusFilter, setStatusFilter] = useState<PaymentStatus | "all">("all");
   const [methodFilter, setMethodFilter] = useState<PaymentMethod | "all">("all");
+  const showActions = canApprovePayments(userRole);
 
   const filtered = payments.filter((p) => {
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
@@ -100,12 +163,13 @@ export function PaymentTable({ payments }: Props) {
                 <TableHead>Método</TableHead>
                 <TableHead className="text-right">Monto</TableHead>
                 <TableHead className="text-right">Estado</TableHead>
+                {showActions && <TableHead className="text-right">Acciones</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={showActions ? 6 : 5} className="py-8 text-center text-sm text-muted-foreground">
                     No se encontraron pagos
                   </TableCell>
                 </TableRow>
@@ -135,6 +199,15 @@ export function PaymentTable({ payments }: Props) {
                           {statusCfg.label}
                         </Badge>
                       </TableCell>
+                      {showActions && (
+                        <TableCell className="text-right">
+                          <PaymentActions
+                            paymentId={payment.id}
+                            status={payment.status}
+                            userRole={userRole}
+                          />
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })
@@ -175,6 +248,15 @@ export function PaymentTable({ payments }: Props) {
                       ${payment.amount.toFixed(2)} {payment.currency}
                     </span>
                   </div>
+                  {showActions && (
+                    <div className="mt-2">
+                      <PaymentActions
+                        paymentId={payment.id}
+                        status={payment.status}
+                        userRole={userRole}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })

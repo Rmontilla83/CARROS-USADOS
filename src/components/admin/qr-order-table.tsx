@@ -1,3 +1,4 @@
+import { MapPin, Phone, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -9,7 +10,13 @@ import {
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
 import { QrOrderActions } from "./qr-order-actions";
-import type { QrOrder, Vehicle, Profile, QrOrderStatus } from "@/types";
+import { canPrintQrOrders, canAssignCourier, canMarkDelivered } from "@/lib/permissions";
+import type { QrOrder, Vehicle, Profile, QrOrderStatus, UserRole } from "@/types";
+
+interface Props {
+  userRole: UserRole;
+  userId: string;
+}
 
 type OrderRow = Pick<
   QrOrder,
@@ -66,10 +73,14 @@ function StatusTimeline({ status }: { status: QrOrderStatus }) {
   );
 }
 
-export async function QrOrderTable() {
+export async function QrOrderTable({ userRole, userId }: Props) {
   const supabase = await createClient();
+  const isCourier = userRole === "courier";
+  const showPrintActions = canPrintQrOrders(userRole);
+  const showAssignActions = canAssignCourier(userRole);
+  const showDeliverActions = canMarkDelivered(userRole);
 
-  const { data: orders } = await supabase
+  let query = supabase
     .from("qr_orders")
     .select(
       "id, vehicle_id, status, delivery_address, delivery_city, delivery_phone, preferred_time, delivery_notes, courier_id, created_at"
@@ -77,19 +88,34 @@ export async function QrOrderTable() {
     .order("created_at", { ascending: false })
     .limit(50);
 
+  // Courier sees only their assigned orders
+  if (isCourier) {
+    query = query.eq("courier_id", userId);
+  }
+
+  const { data: orders } = await query;
   const typedOrders = (orders as OrderRow[]) || [];
 
   if (typedOrders.length === 0) {
     return (
       <div className="mt-6 rounded-lg border border-border bg-card p-8 text-center">
-        <p className="text-muted-foreground">No hay órdenes de QR.</p>
+        <p className="text-muted-foreground">
+          {isCourier ? "No tienes órdenes asignadas." : "No hay órdenes de QR."}
+        </p>
       </div>
     );
   }
 
-  // Stats
-  const pendingCount = typedOrders.filter((o) => o.status === "pending").length;
-  const printedCount = typedOrders.filter((o) => o.status === "printed" || o.status === "assigned").length;
+  // Stats — different for courier vs printer/admin
+  const pendingCount = isCourier
+    ? typedOrders.filter((o) => o.status === "assigned").length
+    : typedOrders.filter((o) => o.status === "pending").length;
+  const inProgressCount = isCourier
+    ? typedOrders.filter((o) => {
+        const today = new Date().toDateString();
+        return o.status === "assigned" && new Date(o.created_at).toDateString() === today;
+      }).length
+    : typedOrders.filter((o) => o.status === "printed" || o.status === "assigned").length;
   const deliveredCount = typedOrders.filter((o) => o.status === "delivered").length;
 
   // Fetch vehicle info
@@ -110,13 +136,13 @@ export async function QrOrderTable() {
   }
 
   // Fetch seller names
-  const userIds = [
+  const sellerIds = [
     ...new Set(
       (vehicles as Pick<Vehicle, "user_id">[] || []).map((v) => v.user_id)
     ),
   ];
-  const { data: profiles } = userIds.length > 0
-    ? await supabase.from("profiles").select("id, full_name, phone, city").in("id", userIds)
+  const { data: profiles } = sellerIds.length > 0
+    ? await supabase.from("profiles").select("id, full_name, phone, city").in("id", sellerIds)
     : { data: [] };
 
   const profileMap = new Map<string, Pick<Profile, "full_name" | "phone" | "city">>();
@@ -126,30 +152,51 @@ export async function QrOrderTable() {
     }
   }
 
-  // Fetch couriers for the selector
-  const { data: couriers } = await supabase
-    .from("profiles")
-    .select("id, full_name")
-    .eq("role", "courier");
-
-  const courierList = (couriers as Pick<Profile, "id" | "full_name">[]) || [];
+  // Fetch couriers for the selector (only if user can assign)
+  let courierList: Pick<Profile, "id" | "full_name">[] = [];
+  if (showAssignActions) {
+    const { data: couriers } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .eq("role", "courier");
+    courierList = (couriers as Pick<Profile, "id" | "full_name">[]) || [];
+  }
 
   return (
     <div className="mt-6 space-y-4">
       {/* Order stats */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-center">
-          <p className="text-2xl font-bold text-yellow-700">{pendingCount}</p>
-          <p className="text-xs text-yellow-600">Pendientes</p>
-        </div>
-        <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-center">
-          <p className="text-2xl font-bold text-purple-700">{printedCount}</p>
-          <p className="text-xs text-purple-600">Listos para entregar</p>
-        </div>
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
-          <p className="text-2xl font-bold text-green-700">{deliveredCount}</p>
-          <p className="text-xs text-green-600">Entregados</p>
-        </div>
+        {isCourier ? (
+          <>
+            <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 text-center">
+              <p className="text-2xl font-bold text-orange-700">{pendingCount}</p>
+              <p className="text-xs text-orange-600">Pendientes de entrega</p>
+            </div>
+            <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-center">
+              <p className="text-2xl font-bold text-blue-700">{inProgressCount}</p>
+              <p className="text-xs text-blue-600">De hoy</p>
+            </div>
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+              <p className="text-2xl font-bold text-green-700">{deliveredCount}</p>
+              <p className="text-xs text-green-600">Entregados</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-center">
+              <p className="text-2xl font-bold text-yellow-700">{pendingCount}</p>
+              <p className="text-xs text-yellow-600">Pendientes</p>
+            </div>
+            <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-center">
+              <p className="text-2xl font-bold text-purple-700">{inProgressCount}</p>
+              <p className="text-xs text-purple-600">Listos para entregar</p>
+            </div>
+            <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
+              <p className="text-2xl font-bold text-green-700">{deliveredCount}</p>
+              <p className="text-xs text-green-600">Entregados</p>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border bg-card">
@@ -173,6 +220,8 @@ export async function QrOrderTable() {
                   ? profileMap.get(vehicle.user_id)
                   : null;
                 const statusCfg = STATUS_CONFIG[order.status];
+                const phone = order.delivery_phone || seller?.phone;
+                const address = order.delivery_address;
 
                 return (
                   <TableRow key={order.id}>
@@ -183,13 +232,11 @@ export async function QrOrderTable() {
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       <div>{seller?.full_name || "—"}</div>
-                      <div className="text-xs">
-                        {order.delivery_phone || seller?.phone || ""}
-                      </div>
+                      <div className="text-xs">{phone || ""}</div>
                     </TableCell>
                     <TableCell className="max-w-[200px]">
                       <div className="text-sm text-muted-foreground truncate">
-                        {order.delivery_address || "Sin dirección"}
+                        {address || "Sin dirección"}
                       </div>
                       <div className="flex gap-2 text-xs text-muted-foreground">
                         <span>{order.delivery_city || seller?.city || "—"}</span>
@@ -197,6 +244,31 @@ export async function QrOrderTable() {
                           <span>· {TIME_LABELS[String(order.preferred_time)] || String(order.preferred_time)}</span>
                         )}
                       </div>
+                      {/* Courier quick actions: map + call */}
+                      {isCourier && order.status === "assigned" && (
+                        <div className="mt-1 flex gap-2">
+                          {address && (
+                            <a
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address + ", " + (order.delivery_city || ""))}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <MapPin className="size-3" />
+                              Ver en mapa
+                            </a>
+                          )}
+                          {phone && (
+                            <a
+                              href={`tel:${phone}`}
+                              className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <Phone className="size-3" />
+                              Llamar
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1.5">
@@ -217,6 +289,7 @@ export async function QrOrderTable() {
                         orderId={order.id}
                         currentStatus={order.status}
                         couriers={courierList}
+                        userRole={userRole}
                       />
                     </TableCell>
                   </TableRow>
@@ -232,6 +305,8 @@ export async function QrOrderTable() {
             const vehicle = vehicleMap.get(order.vehicle_id);
             const seller = vehicle ? profileMap.get(vehicle.user_id) : null;
             const statusCfg = STATUS_CONFIG[order.status];
+            const phone = order.delivery_phone || seller?.phone;
+            const address = order.delivery_address;
 
             return (
               <div key={order.id} className="p-4 space-y-2">
@@ -250,13 +325,38 @@ export async function QrOrderTable() {
                     {statusCfg.label}
                   </Badge>
                 </div>
-                {(order.delivery_address || order.delivery_city) && (
+                {(address || order.delivery_city) && (
                   <div className="rounded-lg bg-secondary/50 p-2 text-xs text-muted-foreground">
-                    <p>{order.delivery_address}</p>
-                    <p>{order.delivery_city} · {order.delivery_phone} · {TIME_LABELS[String(order.preferred_time || "any")]}</p>
+                    <p>{address}</p>
+                    <p>{order.delivery_city} · {phone} · {TIME_LABELS[String(order.preferred_time || "any")]}</p>
                     {order.delivery_notes ? (
                       <p className="mt-1 italic">{String(order.delivery_notes)}</p>
                     ) : null}
+                  </div>
+                )}
+                {/* Courier quick actions on mobile */}
+                {isCourier && order.status === "assigned" && (
+                  <div className="flex gap-3">
+                    {address && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address + ", " + (order.delivery_city || ""))}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
+                      >
+                        <MapPin className="size-3" />
+                        Ver en mapa
+                      </a>
+                    )}
+                    {phone && (
+                      <a
+                        href={`tel:${phone}`}
+                        className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
+                      >
+                        <Phone className="size-3" />
+                        Llamar
+                      </a>
+                    )}
                   </div>
                 )}
                 <StatusTimeline status={order.status} />
@@ -264,6 +364,7 @@ export async function QrOrderTable() {
                   orderId={order.id}
                   currentStatus={order.status}
                   couriers={courierList}
+                  userRole={userRole}
                 />
               </div>
             );

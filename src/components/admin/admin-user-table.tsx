@@ -8,22 +8,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createClient } from "@/lib/supabase/server";
+import { canChangeRoles, ROLE_LABELS, ROLE_BADGE_COLORS } from "@/lib/permissions";
+import { UserRoleSelect } from "./user-role-select";
 import type { Profile, UserRole } from "@/types";
+
+interface Props {
+  userRole: UserRole;
+}
 
 type ProfileRow = Pick<
   Profile,
   "id" | "full_name" | "email" | "city" | "role" | "created_at"
 >;
 
-const ROLE_CONFIG: Record<UserRole, { label: string; className: string }> = {
-  seller: { label: "Vendedor", className: "bg-gray-100 text-gray-600 border-gray-300" },
-  admin: { label: "Admin", className: "bg-primary/15 text-primary border-primary/30" },
-  printer: { label: "Impresor", className: "bg-purple-100 text-purple-700 border-purple-300" },
-  courier: { label: "Motorizado", className: "bg-orange-100 text-orange-700 border-orange-300" },
-};
-
-export async function AdminUserTable() {
+export async function AdminUserTable({ userRole }: Props) {
   const supabase = await createClient();
+  const showRoleChanger = canChangeRoles(userRole);
 
   // Fetch all profiles
   const { data: profiles } = await supabase
@@ -75,7 +75,8 @@ export async function AdminUserTable() {
           </TableHeader>
           <TableBody>
             {typedProfiles.map((user) => {
-              const roleCfg = ROLE_CONFIG[user.role];
+              const badgeColor = ROLE_BADGE_COLORS[user.role] || ROLE_BADGE_COLORS.seller;
+              const roleLabel = ROLE_LABELS[user.role] || user.role;
               return (
                 <TableRow key={user.id}>
                   <TableCell className="text-sm font-medium text-foreground">
@@ -88,9 +89,13 @@ export async function AdminUserTable() {
                     {user.city || "—"}
                   </TableCell>
                   <TableCell>
-                    <Badge className={`border text-[11px] ${roleCfg.className}`}>
-                      {roleCfg.label}
-                    </Badge>
+                    {showRoleChanger ? (
+                      <UserRoleSelect userId={user.id} currentRole={user.role} />
+                    ) : (
+                      <Badge className={`border text-[11px] ${badgeColor}`}>
+                        {roleLabel}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {countMap.get(user.id) || 0}
@@ -112,7 +117,8 @@ export async function AdminUserTable() {
       {/* Mobile cards */}
       <div className="divide-y divide-border lg:hidden">
         {typedProfiles.map((user) => {
-          const roleCfg = ROLE_CONFIG[user.role];
+          const badgeColor = ROLE_BADGE_COLORS[user.role] || ROLE_BADGE_COLORS.seller;
+          const roleLabel = ROLE_LABELS[user.role] || user.role;
           return (
             <div key={user.id} className="p-4">
               <div className="flex items-start justify-between gap-2">
@@ -122,9 +128,13 @@ export async function AdminUserTable() {
                   </p>
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
-                <Badge className={`shrink-0 border text-[11px] ${roleCfg.className}`}>
-                  {roleCfg.label}
-                </Badge>
+                {showRoleChanger ? (
+                  <UserRoleSelect userId={user.id} currentRole={user.role} />
+                ) : (
+                  <Badge className={`shrink-0 border text-[11px] ${badgeColor}`}>
+                    {roleLabel}
+                  </Badge>
+                )}
               </div>
               <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                 <span>

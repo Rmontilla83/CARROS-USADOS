@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { DollarSign, CheckCircle2, Clock, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { PaymentTable } from "@/components/admin/payment-table";
-import type { Payment } from "@/types";
+import { AccessDenied } from "@/components/admin/access-denied";
+import { canViewPayments, getDefaultAdminRoute } from "@/lib/permissions";
+import type { Payment, Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Pagos — Admin",
@@ -15,6 +18,23 @@ type PaymentRow = Pick<
 
 export default async function AdminPaymentsPage() {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const role = (profile as Pick<Profile, "role"> | null)?.role;
+  if (!role || !canViewPayments(role)) {
+    return <AccessDenied defaultRoute={getDefaultAdminRoute(role ?? "seller")} />;
+  }
 
   const { data: payments } = await supabase
     .from("payments")
@@ -95,7 +115,7 @@ export default async function AdminPaymentsPage() {
 
       {/* Payments table */}
       <div className="mt-6">
-        <PaymentTable payments={typedPayments} />
+        <PaymentTable payments={typedPayments} userRole={role} />
       </div>
     </div>
   );

@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+const INTERNAL_ROLES = ["admin", "analyst", "moderator", "printer", "courier", "support"];
+
 export async function middleware(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -70,7 +72,7 @@ export async function middleware(request: NextRequest) {
       .single();
 
     const url = request.nextUrl.clone();
-    url.pathname = profile?.role === "admin" ? "/admin" : "/dashboard";
+    url.pathname = INTERNAL_ROLES.includes(profile?.role) ? "/admin" : "/dashboard";
     return NextResponse.redirect(url);
   }
 

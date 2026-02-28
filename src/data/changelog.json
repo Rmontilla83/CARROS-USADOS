@@ -5,6 +5,11 @@
     "entries": [
       {
         "type": "feature",
+        "title": "Control de acceso por roles (RBAC)",
+        "description": "Sistema completo de roles internos: admin, analista, moderador, impresor, motorizado y soporte. Cada rol ve solo las secciones y acciones permitidas. Sidebar dinámico con badges de notificación por rol. Soporte puede aprobar/rechazar pagos. Moderador puede aprobar/rechazar vehículos. Motorizado ve solo sus entregas asignadas con acceso directo a mapa y llamadas."
+      },
+      {
+        "type": "feature",
         "title": "Análisis de precio automático con IA",
         "description": "Al llegar al paso de precio, la IA analiza automáticamente usando toda la info del vehículo incluyendo descripción y condiciones. Se eliminó la opción de omitir — el análisis es obligatorio y el usuario no puede exceder el precio máximo del mercado."
       },

@@ -13,11 +13,13 @@ import { createClient } from "@/lib/supabase/server";
 import { VehicleStatusActions } from "./vehicle-status-actions";
 import { QrPreviewButton } from "./qr-preview-button";
 import { AdminVehicleFilters } from "./admin-vehicle-filters";
-import type { Vehicle, Profile, VehicleStatus } from "@/types";
+import { canModerateVehicles } from "@/lib/permissions";
+import type { Vehicle, Profile, VehicleStatus, UserRole } from "@/types";
 
 interface Props {
   statusFilter?: string;
   searchQuery?: string;
+  userRole: UserRole;
 }
 
 type VehicleRow = Pick<
@@ -47,8 +49,9 @@ const STATUS_CONFIG: Record<
   rejected: { label: "Rechazado", className: "bg-red-100 text-red-700 border-red-300" },
 };
 
-export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
+export async function AdminVehicleTable({ statusFilter, searchQuery, userRole }: Props) {
   const supabase = await createClient();
+  const showActions = canModerateVehicles(userRole);
 
   let query = supabase
     .from("vehicles")
@@ -113,7 +116,9 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
                   <TableHead>Estado</TableHead>
                   <TableHead>Visitas</TableHead>
                   <TableHead>Fecha</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                  {showActions && (
+                    <TableHead className="text-right">Acciones</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -174,22 +179,24 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
                           month: "short",
                         })}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <QrPreviewButton
-                            slug={v.slug}
-                            vehicleName={`${v.brand} ${v.model} ${v.year}`}
-                            brand={v.brand}
-                            model={v.model}
-                            year={v.year}
-                            price={v.price}
-                          />
-                          <VehicleStatusActions
-                            vehicleId={v.id}
-                            currentStatus={v.status}
-                          />
-                        </div>
-                      </TableCell>
+                      {showActions && (
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <QrPreviewButton
+                              slug={v.slug}
+                              vehicleName={`${v.brand} ${v.model} ${v.year}`}
+                              brand={v.brand}
+                              model={v.model}
+                              year={v.year}
+                              price={v.price}
+                            />
+                            <VehicleStatusActions
+                              vehicleId={v.id}
+                              currentStatus={v.status}
+                            />
+                          </div>
+                        </TableCell>
+                      )}
                     </TableRow>
                   );
                 })}
@@ -222,20 +229,22 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
                       <Eye className="size-3" />
                       {v.views_count} visitas
                     </span>
-                    <div className="flex items-center gap-1">
-                      <QrPreviewButton
-                        slug={v.slug}
-                        vehicleName={`${v.brand} ${v.model} ${v.year}`}
-                        brand={v.brand}
-                        model={v.model}
-                        year={v.year}
-                        price={v.price}
-                      />
-                      <VehicleStatusActions
-                        vehicleId={v.id}
-                        currentStatus={v.status}
-                      />
-                    </div>
+                    {showActions && (
+                      <div className="flex items-center gap-1">
+                        <QrPreviewButton
+                          slug={v.slug}
+                          vehicleName={`${v.brand} ${v.model} ${v.year}`}
+                          brand={v.brand}
+                          model={v.model}
+                          year={v.year}
+                          price={v.price}
+                        />
+                        <VehicleStatusActions
+                          vehicleId={v.id}
+                          currentStatus={v.status}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               );

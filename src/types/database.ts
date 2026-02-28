@@ -9,7 +9,7 @@ export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 export type PaymentCurrency = "USD" | "VES";
 export type PaymentMethod = "stripe" | "bank_transfer" | "pago_movil" | "zelle" | "mercantil_c2p" | "mercantil_debit" | "mercantil_card";
 export type MediaType = "photo" | "video";
-export type UserRole = "seller" | "admin" | "printer" | "courier";
+export type UserRole = "seller" | "admin" | "analyst" | "moderator" | "printer" | "courier" | "support";
 export type PriceOpinion = "fair" | "too_expensive" | "good_deal" | "no_opinion";
 
 export interface Profile {

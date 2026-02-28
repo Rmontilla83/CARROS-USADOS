@@ -5,18 +5,23 @@ import { useRouter } from "next/navigation";
 import { Printer, Truck, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateQrOrderStatus, assignCourier } from "@/lib/actions/admin";
-import type { QrOrderStatus, Profile } from "@/types";
+import type { QrOrderStatus, Profile, UserRole } from "@/types";
 
 interface Props {
   orderId: string;
   currentStatus: QrOrderStatus;
   couriers: Pick<Profile, "id" | "full_name">[];
+  userRole: UserRole;
 }
 
-export function QrOrderActions({ orderId, currentStatus, couriers }: Props) {
+export function QrOrderActions({ orderId, currentStatus, couriers, userRole }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showCourierSelect, setShowCourierSelect] = useState(false);
+
+  const canPrint = userRole === "admin" || userRole === "printer";
+  const canAssign = userRole === "admin" || userRole === "printer";
+  const canDeliver = userRole === "admin" || userRole === "courier";
 
   async function handleStatusUpdate(status: QrOrderStatus) {
     setLoading(true);
@@ -37,7 +42,7 @@ export function QrOrderActions({ orderId, currentStatus, couriers }: Props) {
     setLoading(false);
   }
 
-  if (currentStatus === "pending") {
+  if (currentStatus === "pending" && canPrint) {
     return (
       <Button
         onClick={() => handleStatusUpdate("printed")}
@@ -56,7 +61,7 @@ export function QrOrderActions({ orderId, currentStatus, couriers }: Props) {
     );
   }
 
-  if (currentStatus === "printed") {
+  if (currentStatus === "printed" && canAssign) {
     if (showCourierSelect) {
       return (
         <div className="flex flex-wrap items-center gap-1.5">
@@ -109,7 +114,7 @@ export function QrOrderActions({ orderId, currentStatus, couriers }: Props) {
     );
   }
 
-  if (currentStatus === "assigned") {
+  if (currentStatus === "assigned" && canDeliver) {
     return (
       <Button
         onClick={() => handleStatusUpdate("delivered")}

@@ -24,7 +24,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
+import { getNavItems, ROLE_LABELS, ROLE_BADGE_COLORS } from "@/lib/permissions";
+import type { UserRole } from "@/types";
 import changelog from "@/data/changelog.json";
 
 // Count entries from releases in the last 7 days
@@ -32,24 +35,36 @@ const recentEntryCount = changelog
   .filter((r) => Date.now() - new Date(r.date).getTime() < 7 * 24 * 60 * 60 * 1000)
   .reduce((sum, r) => sum + r.entries.length, 0);
 
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  LayoutDashboard,
+  Car,
+  QrCode,
+  Users,
+  FileText,
+  CreditCard,
+};
+
 interface Props {
   userName: string;
   userEmail: string;
+  userRole: UserRole;
+  counts: {
+    pendingVehicles: number;
+    pendingQr: number;
+    assignedToMe: number;
+    pendingPayments: number;
+  };
 }
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/vehicles", label: "Publicaciones", icon: Car },
-  { href: "/admin/payments", label: "Pagos", icon: CreditCard, isNew: true },
-  { href: "/admin/qr-orders", label: "Impresión y Entregas", icon: QrCode },
-  { href: "/admin/users", label: "Usuarios", icon: Users },
-  { href: "/admin/changelog", label: "Novedades", icon: FileText, badgeCount: recentEntryCount },
-];
-
-export function AdminSidebar({ userName, userEmail }: Props) {
+export function AdminSidebar({ userName, userEmail, userRole, counts }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+
+  const navItems = getNavItems(userRole, {
+    ...counts,
+    changelogCount: recentEntryCount,
+  });
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -75,8 +90,9 @@ export function AdminSidebar({ userName, userEmail }: Props) {
 
       {/* Nav links */}
       <nav className="mt-6 flex flex-col gap-1">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const active = isActive(item.href);
+          const IconComponent = ICON_MAP[item.icon];
           return (
             <Link
               key={item.href}
@@ -88,14 +104,14 @@ export function AdminSidebar({ userName, userEmail }: Props) {
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
             >
-              <item.icon className="size-4 shrink-0" />
+              {IconComponent && <IconComponent className="size-4 shrink-0" />}
               {item.label}
-              {"isNew" in item && item.isNew && (
+              {item.isNew && (
                 <span className="ml-auto rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-bold text-white">
                   Nuevo
                 </span>
               )}
-              {"badgeCount" in item && typeof item.badgeCount === "number" && item.badgeCount > 0 && (
+              {typeof item.badgeCount === "number" && item.badgeCount > 0 && (
                 <span className="ml-auto flex size-5 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
                   {item.badgeCount}
                 </span>
@@ -128,9 +144,14 @@ export function AdminSidebar({ userName, userEmail }: Props) {
       {/* User info + sign out at bottom */}
       <div className="mt-auto border-t border-border pt-4">
         <div className="px-3 pb-2">
-          <p className="truncate text-sm font-semibold text-foreground">
-            {userName}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="truncate text-sm font-semibold text-foreground">
+              {userName}
+            </p>
+            <Badge className={`border text-[10px] px-1.5 py-0 ${ROLE_BADGE_COLORS[userRole]}`}>
+              {ROLE_LABELS[userRole]}
+            </Badge>
+          </div>
           <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
         </div>
         <button

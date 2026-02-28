@@ -1,13 +1,35 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { AdminStats } from "@/components/admin/admin-stats";
 import { AiDailyInsight } from "@/components/admin/ai-daily-insight";
+import { canViewDashboard, getDefaultAdminRoute } from "@/lib/permissions";
+import type { Profile } from "@/types";
 
 export const metadata: Metadata = {
   title: "Admin Dashboard",
 };
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  const role = (profile as Pick<Profile, "role"> | null)?.role;
+  if (!role || !canViewDashboard(role)) {
+    redirect(getDefaultAdminRoute(role ?? "seller"));
+  }
+
   return (
     <div>
       <div>

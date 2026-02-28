@@ -2,20 +2,33 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import type { VehicleStatus, QrOrderStatus, Profile } from "@/types";
+import {
+  canModerateVehicles,
+  canAssignCourier,
+  canApprovePayments,
+  canViewDashboard,
+  canChangeRoles,
+} from "@/lib/permissions";
+import type { VehicleStatus, QrOrderStatus, Profile, UserRole } from "@/types";
 
 interface ActionResult {
   success: boolean;
   error?: string;
 }
 
-async function requireAdmin(): Promise<{ userId: string } | ActionResult> {
+type AuthSuccess = { ok: true; userId: string; role: UserRole };
+type AuthFailure = { ok: false; result: ActionResult };
+type AuthResult = AuthSuccess | AuthFailure;
+
+async function requireRole(
+  ...allowedRoles: UserRole[]
+): Promise<AuthResult> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return { success: false, error: "No autenticado" };
+  if (!user) return { ok: false, result: { success: false, error: "No autenticado" } };
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -23,11 +36,12 @@ async function requireAdmin(): Promise<{ userId: string } | ActionResult> {
     .eq("id", user.id)
     .single();
 
-  if (!profile || (profile as Pick<Profile, "role">).role !== "admin") {
-    return { success: false, error: "No autorizado" };
+  const role = (profile as Pick<Profile, "role"> | null)?.role;
+  if (!role || !allowedRoles.includes(role)) {
+    return { ok: false, result: { success: false, error: "No autorizado" } };
   }
 
-  return { userId: user.id };
+  return { ok: true, userId: user.id, role };
 }
 
 /**
@@ -37,8 +51,12 @@ export async function updateVehicleStatus(
   vehicleId: string,
   status: VehicleStatus
 ): Promise<ActionResult> {
-  const auth = await requireAdmin();
-  if ("error" in auth) return auth as ActionResult;
+  const auth = await requireRole("admin", "moderator");
+  if (!auth.ok) return auth.result;
+
+  if (!canModerateVehicles(auth.role)) {
+    return { success: false, error: "No autorizado para moderar vehículos" };
+  }
 
   const supabase = await createClient();
 
@@ -68,8 +86,25 @@ export async function updateQrOrderStatus(
   orderId: string,
   status: QrOrderStatus
 ): Promise<ActionResult> {
-  const auth = await requireAdmin();
-  if ("error" in auth) return auth as ActionResult;
+  const auth = await requireRole("admin", "printer", "courier");
+  if (!auth.ok) return auth.result;
+
+  // Courier can only mark as delivered and only their own orders
+  if (auth.role === "courier") {
+    if (status !== "delivered") {
+      return { success: false, error: "Solo puedes marcar como entregado" };
+    }
+    const supabase = await createClient();
+    const { data: order } = await supabase
+      .from("qr_orders")
+      .select("courier_id")
+      .eq("id", orderId)
+      .single();
+
+    if (!order || (order as { courier_id: string | null }).courier_id !== auth.userId) {
+      return { success: false, error: "Solo puedes actualizar tus órdenes asignadas" };
+    }
+  }
 
   const supabase = await createClient();
 
@@ -101,8 +136,12 @@ export async function assignCourier(
   orderId: string,
   courierId: string
 ): Promise<ActionResult> {
-  const auth = await requireAdmin();
-  if ("error" in auth) return auth as ActionResult;
+  const auth = await requireRole("admin", "printer");
+  if (!auth.ok) return auth.result;
+
+  if (!canAssignCourier(auth.role)) {
+    return { success: false, error: "No autorizado para asignar motorizados" };
+  }
 
   const supabase = await createClient();
 
@@ -135,8 +174,8 @@ export async function generateQrPreview(
   siteUrl?: string;
   error?: string;
 }> {
-  const auth = await requireAdmin();
-  if ("error" in auth) return { success: false, error: (auth as ActionResult).error };
+  const auth = await requireRole("admin", "printer");
+  if (!auth.ok) return { success: false, error: auth.result.error };
 
   const { generateQrDataUrl } = await import("@/lib/qr/generate");
   const { APP_URL } = await import("@/lib/constants");
@@ -162,8 +201,12 @@ export async function generateDailyInsight(): Promise<{
   insight?: string;
   error?: string;
 }> {
-  const auth = await requireAdmin();
-  if ("error" in auth) return { success: false, error: (auth as ActionResult).error };
+  const auth = await requireRole("admin", "analyst");
+  if (!auth.ok) return { success: false, error: auth.result.error };
+
+  if (!canViewDashboard(auth.role)) {
+    return { success: false, error: "No autorizado" };
+  }
 
   try {
     const supabase = await createClient();
@@ -260,4 +303,109 @@ Responde SOLO con el texto del insight, sin formato markdown, sin comillas, sin 
     const message = err instanceof Error ? err.message : "No se pudo generar el insight.";
     return { success: false, error: message };
   }
+}
+
+/**
+ * Update a user's role. Admin only.
+ */
+export async function updateUserRole(
+  userId: string,
+  newRole: UserRole
+): Promise<ActionResult> {
+  const auth = await requireRole("admin");
+  if (!auth.ok) return auth.result;
+
+  if (!canChangeRoles(auth.role)) {
+    return { success: false, error: "No autorizado para cambiar roles" };
+  }
+
+  // Prevent admin from changing their own role
+  if (auth.userId === userId) {
+    return { success: false, error: "No puedes cambiar tu propio rol" };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ role: newRole })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("Update user role error:", error);
+    return { success: false, error: "Error al actualizar el rol." };
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true };
+}
+
+/**
+ * Approve a pending payment. Admin or support.
+ */
+export async function approvePayment(
+  paymentId: string
+): Promise<ActionResult> {
+  const auth = await requireRole("admin", "support");
+  if (!auth.ok) return auth.result;
+
+  if (!canApprovePayments(auth.role)) {
+    return { success: false, error: "No autorizado para aprobar pagos" };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("payments")
+    .update({
+      status: "completed",
+      verified_by: auth.userId,
+      verified_at: new Date().toISOString(),
+    })
+    .eq("id", paymentId)
+    .eq("status", "pending");
+
+  if (error) {
+    console.error("Approve payment error:", error);
+    return { success: false, error: "Error al aprobar el pago." };
+  }
+
+  revalidatePath("/admin/payments");
+  return { success: true };
+}
+
+/**
+ * Reject a pending payment with a reason. Admin or support.
+ */
+export async function rejectPayment(
+  paymentId: string,
+  reason: string
+): Promise<ActionResult> {
+  const auth = await requireRole("admin", "support");
+  if (!auth.ok) return auth.result;
+
+  if (!canApprovePayments(auth.role)) {
+    return { success: false, error: "No autorizado para rechazar pagos" };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("payments")
+    .update({
+      status: "failed",
+      verified_by: auth.userId,
+      verified_at: new Date().toISOString(),
+      rejection_reason: reason,
+    })
+    .eq("id", paymentId)
+    .eq("status", "pending");
+
+  if (error) {
+    console.error("Reject payment error:", error);
+    return { success: false, error: "Error al rechazar el pago." };
+  }
+
+  revalidatePath("/admin/payments");
+  return { success: true };
 }
