@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Car,
@@ -45,6 +46,7 @@ const TIME_LABELS: Record<string, string> = {
 };
 
 export function WizardStepSummary({ data, onBack }: Props) {
+  const router = useRouter();
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(data.termsAccepted);
@@ -95,6 +97,11 @@ export function WizardStepSummary({ data, onBack }: Props) {
     if (result?.error) {
       setError(result.error);
       setIsPublishing(false);
+      return;
+    }
+
+    if (result?.vehicleId) {
+      router.push(`/checkout/${result.vehicleId}`);
     }
   }
 
@@ -336,7 +343,7 @@ export function WizardStepSummary({ data, onBack }: Props) {
           size="lg"
           disabled={isPublishing || !termsAccepted}
         >
-          {isPublishing ? "Publicando..." : "Publicar Vehículo"}
+          {isPublishing ? "Guardando..." : "Continuar al Pago"}
         </Button>
       </div>
     </div>
