@@ -3,6 +3,15 @@ export const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000
 
 // Publication pricing
 export const PUBLICATION_PRICE_USD = 20;
+export const BCV_RATE_FALLBACK = 80.0;
+
+// Payment methods configuration
+export const PAYMENT_METHODS = {
+  stripe: { id: "stripe" as const, label: "Tarjeta de Crédito/Débito", enabled: true },
+  mercantil_c2p: { id: "mercantil_c2p" as const, label: "Pago Móvil (C2P)", enabled: false },
+  mercantil_debit: { id: "mercantil_debit" as const, label: "Débito Inmediato", enabled: false },
+  mercantil_card: { id: "mercantil_card" as const, label: "Tarjeta Nacional", enabled: false },
+} as const;
 
 // Vehicle constraints
 export const MIN_PHOTOS = 5;

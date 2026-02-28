@@ -7,7 +7,7 @@ export type VehicleFuel = "gasoline" | "diesel" | "electric" | "hybrid" | "gas";
 export type QrOrderStatus = "pending" | "printing" | "printed" | "assigned" | "delivered";
 export type PaymentStatus = "pending" | "completed" | "failed" | "refunded";
 export type PaymentCurrency = "USD" | "VES";
-export type PaymentMethod = "stripe" | "bank_transfer" | "pago_movil" | "zelle";
+export type PaymentMethod = "stripe" | "bank_transfer" | "pago_movil" | "zelle" | "mercantil_c2p" | "mercantil_debit" | "mercantil_card";
 export type MediaType = "photo" | "video";
 export type UserRole = "seller" | "admin" | "printer" | "courier";
 export type PriceOpinion = "fair" | "too_expensive" | "good_deal" | "no_opinion";
@@ -105,6 +105,22 @@ export interface Payment {
   status: PaymentStatus;
   paid_at: string | null;
   description: string | null;
+  proof_image_url: string | null;
+  reference_number: string | null;
+  verified_by: string | null;
+  verified_at: string | null;
+  rejection_reason: string | null;
+  bcv_rate: number | null;
+  amount_ves: number | null;
+  mercantil_transaction_id: string | null;
+  created_at: string;
+}
+
+export interface BcvRate {
+  id: string;
+  rate: number;
+  source: string;
+  fetched_at: string;
   created_at: string;
 }
 
