@@ -37,6 +37,11 @@ export function WizardStepPhotos({ data, onNext, onBack }: Props) {
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
+        setError(
+          uploadError.message.includes("not found")
+            ? "Error: El bucket de almacenamiento no existe. Contacta al administrador."
+            : `Error al subir foto: ${uploadError.message}`
+        );
         return { ...photo, uploading: false };
       }
 
