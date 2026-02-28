@@ -16,21 +16,30 @@ import { generateQrPreview } from "@/lib/actions/admin";
 interface Props {
   slug: string;
   vehicleName: string;
+  brand: string;
+  model: string;
+  year: number;
+  price: number;
 }
 
-export function QrPreviewButton({ slug, vehicleName }: Props) {
+type Tab = "vinyl" | "qr";
+
+export function QrPreviewButton({ slug, vehicleName, brand, model, year, price }: Props) {
   const [loading, setLoading] = useState(false);
-  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [vinylDataUrl, setVinylDataUrl] = useState<string | null>(null);
   const [vehicleUrl, setVehicleUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("vinyl");
 
   async function handleOpen(open: boolean) {
-    if (open && !dataUrl) {
+    if (open && !qrDataUrl) {
       setLoading(true);
       setError(null);
-      const result = await generateQrPreview(slug);
-      if (result.success && result.dataUrl) {
-        setDataUrl(result.dataUrl);
+      const result = await generateQrPreview(slug, { brand, model, year, price });
+      if (result.success) {
+        setQrDataUrl(result.qrDataUrl || null);
+        setVinylDataUrl(result.vinylDataUrl || null);
         setVehicleUrl(result.vehicleUrl || null);
       } else {
         setError(result.error || "Error desconocido");
@@ -39,10 +48,9 @@ export function QrPreviewButton({ slug, vehicleName }: Props) {
     }
   }
 
-  function handleDownload() {
-    if (!dataUrl) return;
+  function handleDownload(dataUrl: string, filename: string) {
     const link = document.createElement("a");
-    link.download = `qr-${slug}.png`;
+    link.download = filename;
     link.href = dataUrl;
     link.click();
   }
@@ -60,18 +68,44 @@ export function QrPreviewButton({ slug, vehicleName }: Props) {
           <span className="hidden sm:inline">QR</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-center">
-            QR — {vehicleName}
+            {vehicleName}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col items-center gap-4 py-4">
+        {/* Tabs */}
+        {!loading && !error && qrDataUrl && (
+          <div className="flex justify-center gap-1 rounded-lg bg-secondary p-1">
+            <button
+              onClick={() => setActiveTab("vinyl")}
+              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                activeTab === "vinyl"
+                  ? "bg-white text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Arte de Impresion
+            </button>
+            <button
+              onClick={() => setActiveTab("qr")}
+              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                activeTab === "qr"
+                  ? "bg-white text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Solo QR
+            </button>
+          </div>
+        )}
+
+        <div className="flex flex-col items-center gap-4 py-2">
           {loading && (
             <div className="flex flex-col items-center gap-2 py-8">
               <Loader2 className="size-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Generando QR...</p>
+              <p className="text-sm text-muted-foreground">Generando vista previa...</p>
             </div>
           )}
 
@@ -81,34 +115,31 @@ export function QrPreviewButton({ slug, vehicleName }: Props) {
             </div>
           )}
 
-          {dataUrl && (
+          {/* Vinyl art preview */}
+          {activeTab === "vinyl" && vinylDataUrl && (
             <>
-              <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+              <div className="w-full rounded-xl border border-border bg-white p-3 shadow-sm">
                 <Image
-                  src={dataUrl}
-                  alt={`QR code for ${vehicleName}`}
-                  width={280}
-                  height={280}
-                  className="size-[280px]"
+                  src={vinylDataUrl}
+                  alt={`Arte de impresion vinil para ${vehicleName}`}
+                  width={600}
+                  height={600}
+                  className="w-full rounded-lg"
                   unoptimized
                 />
               </div>
-
-              {vehicleUrl && (
-                <p className="text-xs text-muted-foreground break-all text-center">
-                  {vehicleUrl}
-                </p>
-              )}
-
-              <div className="flex gap-2">
+              <p className="text-xs text-muted-foreground text-center">
+                Vinil microperforado 65x65 cm — Este es el arte que se imprime y pega en el carro
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleDownload}
+                  onClick={() => handleDownload(vinylDataUrl, `vinil-${slug}.png`)}
                   className="gap-1.5"
                 >
                   <Download className="size-3.5" />
-                  Descargar PNG
+                  Descargar arte (preview)
                 </Button>
                 <Button
                   variant="outline"
@@ -116,14 +147,42 @@ export function QrPreviewButton({ slug, vehicleName }: Props) {
                   asChild
                   className="gap-1.5"
                 >
-                  <a
-                    href={`/${slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a href={`/${slug}`} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="size-3.5" />
                     Ver tarjeta
                   </a>
+                </Button>
+              </div>
+            </>
+          )}
+
+          {/* QR only preview */}
+          {activeTab === "qr" && qrDataUrl && (
+            <>
+              <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+                <Image
+                  src={qrDataUrl}
+                  alt={`QR code para ${vehicleName}`}
+                  width={280}
+                  height={280}
+                  className="size-[280px]"
+                  unoptimized
+                />
+              </div>
+              {vehicleUrl && (
+                <p className="text-xs text-muted-foreground break-all text-center">
+                  {vehicleUrl}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownload(qrDataUrl, `qr-${slug}.png`)}
+                  className="gap-1.5"
+                >
+                  <Download className="size-3.5" />
+                  Descargar QR
                 </Button>
               </div>
             </>

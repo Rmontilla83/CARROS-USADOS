@@ -125,11 +125,18 @@ export async function assignCourier(
 }
 
 /**
- * Generate a QR code preview as a base64 data URL for a vehicle slug.
+ * Generate QR code + vinyl art preview for a vehicle.
  */
 export async function generateQrPreview(
-  slug: string
-): Promise<{ success: boolean; dataUrl?: string; vehicleUrl?: string; error?: string }> {
+  slug: string,
+  vehicleInfo?: { brand: string; model: string; year: number; price: number }
+): Promise<{
+  success: boolean;
+  qrDataUrl?: string;
+  vinylDataUrl?: string;
+  vehicleUrl?: string;
+  error?: string;
+}> {
   const auth = await requireAdmin();
   if ("error" in auth) return { success: false, error: (auth as ActionResult).error };
 
@@ -137,8 +144,27 @@ export async function generateQrPreview(
   const { APP_URL } = await import("@/lib/constants");
 
   try {
-    const dataUrl = await generateQrDataUrl(slug);
-    return { success: true, dataUrl, vehicleUrl: `${APP_URL}/${slug}` };
+    const qrDataUrl = await generateQrDataUrl(slug);
+
+    let vinylDataUrl: string | undefined;
+    if (vehicleInfo) {
+      const { generateVinylPreview } = await import("@/lib/qr/vinyl-template");
+      const vinylBuffer = await generateVinylPreview({
+        slug,
+        brand: vehicleInfo.brand,
+        model: vehicleInfo.model,
+        year: vehicleInfo.year,
+        price: vehicleInfo.price,
+      });
+      vinylDataUrl = `data:image/png;base64,${vinylBuffer.toString("base64")}`;
+    }
+
+    return {
+      success: true,
+      qrDataUrl,
+      vinylDataUrl,
+      vehicleUrl: `${APP_URL}/${slug}`,
+    };
   } catch (err) {
     console.error("QR preview error:", err);
     return { success: false, error: "Error al generar el QR." };

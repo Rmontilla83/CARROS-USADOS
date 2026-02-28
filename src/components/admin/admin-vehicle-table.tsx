@@ -162,6 +162,10 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
                           <QrPreviewButton
                             slug={v.slug}
                             vehicleName={`${v.brand} ${v.model} ${v.year}`}
+                            brand={v.brand}
+                            model={v.model}
+                            year={v.year}
+                            price={v.price}
                           />
                           <VehicleStatusActions
                             vehicleId={v.id}
@@ -205,6 +209,10 @@ export async function AdminVehicleTable({ statusFilter, searchQuery }: Props) {
                       <QrPreviewButton
                         slug={v.slug}
                         vehicleName={`${v.brand} ${v.model} ${v.year}`}
+                        brand={v.brand}
+                        model={v.model}
+                        year={v.year}
+                        price={v.price}
                       />
                       <VehicleStatusActions
                         vehicleId={v.id}
