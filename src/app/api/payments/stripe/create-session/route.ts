@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Auth check
+    console.log("[stripe/create-session] Step 1: Auth check");
     const supabase = await createClient();
     const {
       data: { user },
@@ -26,11 +27,16 @@ export async function POST(request: Request) {
     }
 
     // Verify vehicle is draft and owned by user
-    const { data: vehicle } = await supabase
+    console.log("[stripe/create-session] Step 2: Vehicle check for", vehicleId);
+    const { data: vehicle, error: vehicleError } = await supabase
       .from("vehicles")
       .select("id, brand, model, year, status, user_id")
       .eq("id", vehicleId)
       .single();
+
+    if (vehicleError) {
+      console.error("[stripe/create-session] Vehicle query error:", vehicleError);
+    }
 
     const typedVehicle = vehicle as VehicleRow | null;
 
@@ -39,10 +45,14 @@ export async function POST(request: Request) {
     }
 
     if (typedVehicle.status !== "draft") {
-      return NextResponse.json({ error: "Este vehículo ya fue publicado" }, { status: 400 });
+      return NextResponse.json(
+        { error: `Este vehículo tiene estado "${typedVehicle.status}", se esperaba "draft"` },
+        { status: 400 }
+      );
     }
 
     // Check for existing pending payment to avoid duplicates
+    console.log("[stripe/create-session] Step 3: Check existing payment");
     const adminClient = createAdminClient();
     const { data: existingPayment } = await adminClient
       .from("payments")
@@ -60,7 +70,9 @@ export async function POST(request: Request) {
 
     if (existingPayment) {
       paymentId = existingPayment.id;
+      console.log("[stripe/create-session] Reusing existing payment:", paymentId);
     } else {
+      console.log("[stripe/create-session] Step 4: Insert payment record");
       const { data: payment, error: paymentError } = await adminClient
         .from("payments")
         .insert({
@@ -76,14 +88,16 @@ export async function POST(request: Request) {
         .single();
 
       if (paymentError || !payment) {
-        console.error("Payment insert error:", paymentError);
+        console.error("[stripe/create-session] Payment insert error:", JSON.stringify(paymentError));
         return NextResponse.json({ error: "Error al crear el pago" }, { status: 500 });
       }
 
       paymentId = payment.id;
+      console.log("[stripe/create-session] Payment created:", paymentId);
     }
 
     // Create Stripe Checkout Session
+    console.log("[stripe/create-session] Step 5: Create Stripe session. APP_URL:", APP_URL);
     const stripe = getStripe();
     const vehicleTitle = `${typedVehicle.brand} ${typedVehicle.model} ${typedVehicle.year}`;
 
@@ -118,9 +132,13 @@ export async function POST(request: Request) {
       .update({ stripe_session_id: session.id })
       .eq("id", paymentId);
 
+    console.log("[stripe/create-session] Success. Session URL generated.");
     return NextResponse.json({ url: session.url });
   } catch (err) {
-    console.error("Stripe create-session error:", err);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    const errorStack = err instanceof Error ? err.stack : undefined;
+    console.error("[stripe/create-session] FATAL:", errorMsg);
+    if (errorStack) console.error("[stripe/create-session] Stack:", errorStack);
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }

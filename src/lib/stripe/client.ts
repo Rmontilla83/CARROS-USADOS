@@ -8,7 +8,7 @@ export function getStripe(): Stripe {
   }
 
   if (!stripeInstance) {
-    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY.trim(), {
       typescript: true,
     });
   }
