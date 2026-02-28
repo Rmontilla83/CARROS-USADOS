@@ -31,6 +31,7 @@ export default async function DashboardLayout({
       <DashboardSidebar
         userName={displayName}
         userEmail={user.email || ""}
+        userRole={profile?.role}
       />
 
       {/* Main content area: offset by sidebar width on desktop */}

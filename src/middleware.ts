@@ -62,8 +62,15 @@ export async function middleware(request: NextRequest) {
   );
 
   if (isAuthRoute && user) {
+    // Check if user is admin to redirect to admin panel
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = profile?.role === "admin" ? "/admin" : "/dashboard";
     return NextResponse.redirect(url);
   }
 

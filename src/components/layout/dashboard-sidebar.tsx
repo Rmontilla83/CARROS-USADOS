@@ -11,6 +11,7 @@ import {
   Menu,
   X,
   Home,
+  Shield,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { APP_NAME } from "@/lib/constants";
 interface Props {
   userName: string;
   userEmail: string;
+  userRole?: string;
 }
 
 const NAV_ITEMS = [
@@ -36,7 +38,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/payments", label: "Pagos", icon: CreditCard },
 ];
 
-export function DashboardSidebar({ userName, userEmail }: Props) {
+export function DashboardSidebar({ userName, userEmail, userRole }: Props) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -85,7 +87,7 @@ export function DashboardSidebar({ userName, userEmail }: Props) {
         })}
       </nav>
 
-      {/* Back to home */}
+      {/* Back to home + Admin link */}
       <div className="mt-6 border-t border-border pt-4">
         <Link
           href="/"
@@ -95,6 +97,16 @@ export function DashboardSidebar({ userName, userEmail }: Props) {
           <Home className="size-4 shrink-0" />
           Ir a la página principal
         </Link>
+        {userRole === "admin" && (
+          <Link
+            href="/admin"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-accent transition-colors hover:bg-accent/10"
+          >
+            <Shield className="size-4 shrink-0" />
+            Panel Admin
+          </Link>
+        )}
       </div>
 
       {/* User info + sign out at bottom */}

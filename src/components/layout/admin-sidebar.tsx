@@ -92,8 +92,16 @@ export function AdminSidebar({ userName, userEmail }: Props) {
         })}
       </nav>
 
-      {/* Back to home */}
+      {/* Back to dashboard / home */}
       <div className="mt-6 border-t border-border pt-4">
+        <Link
+          href="/dashboard"
+          onClick={() => setOpen(false)}
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <LayoutDashboard className="size-4 shrink-0" />
+          Ir al Dashboard
+        </Link>
         <Link
           href="/"
           onClick={() => setOpen(false)}
