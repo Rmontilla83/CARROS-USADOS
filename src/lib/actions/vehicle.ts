@@ -118,8 +118,12 @@ export async function publishVehicle(
 
   // Create QR order with delivery data
   if (delivery) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://carros-usados.vercel.app";
+    const qrUrl = `${appUrl}/v/${vehicle.slug}`;
+
     const { error: qrOrderError } = await supabase.from("qr_orders").insert({
       vehicle_id: vehicle.id,
+      qr_url: qrUrl,
       status: "pending",
       delivery_address: delivery.address,
       delivery_city: delivery.city,
