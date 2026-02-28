@@ -17,6 +17,16 @@
         "type": "improvement",
         "title": "Optimización de carga móvil — 97% más rápido",
         "description": "Hero image comprimida de 8.5MB PNG a 87KB WebP (móvil) y 328KB (desktop) con <picture> responsive. Vehicle cards migradas a next/image con WebP automático. Query de views eliminada — se reutilizan datos existentes."
+      },
+      {
+        "type": "feature",
+        "title": "Captura directa con cámara del teléfono",
+        "description": "En los pasos de fotos y video del wizard, ahora hay un botón dedicado para tomar fotos o grabar video directamente con la cámara trasera del teléfono, además de la opción de seleccionar desde la galería."
+      },
+      {
+        "type": "fix",
+        "title": "Orden de impresión QR automática",
+        "description": "Corregido el error que impedía crear la orden de impresión al publicar. Se agregaron columnas faltantes en la base de datos y ahora la orden incluye la URL pública del vehículo."
       }
     ]
   },
