@@ -1,81 +1,94 @@
 /**
  * Mercantil C2P (Comercio a Persona) — Pago Móvil.
- * Stub implementation: ready for when credentials arrive.
+ * Customer provides phone, bank, and cedula. They confirm the payment
+ * on their banking app, then we poll for status.
  */
 
-import { getMercantilToken, isMercantilConfigured } from "./mercantil-auth";
+import { getC2PConfig, signPayload, isMercantilC2PConfigured } from "./mercantil-auth";
 
-const MERCANTIL_C2P_URL = "https://api.mercantilbanco.com/payments/v1/c2p";
+export { isMercantilC2PConfigured };
 
 interface C2PCreateParams {
-  amount: number;
+  amountVes: number;
   phone: string;
   bankCode: string;
   cedula: string;
   paymentId: string;
 }
 
-interface C2PCreateResult {
+export interface C2PCreateResult {
   transactionId: string;
   status: "pending" | "completed" | "failed";
 }
 
-interface C2PStatusResult {
+export interface C2PStatusResult {
   transactionId: string;
   status: "pending" | "completed" | "failed";
   completedAt?: string;
 }
 
+/**
+ * Create a C2P (Pago Móvil) charge.
+ * The customer will receive a push notification to confirm the payment.
+ */
 export async function createC2PCharge(params: C2PCreateParams): Promise<C2PCreateResult> {
-  if (!isMercantilConfigured()) {
-    throw new Error("Mercantil not configured");
-  }
+  const config = getC2PConfig();
 
-  const token = await getMercantilToken();
+  const body = {
+    client_id: config.clientId,
+    merchant_id: config.merchantId,
+    amount: params.amountVes.toFixed(2),
+    currency: "VES",
+    phone: params.phone,
+    bank_code: params.bankCode,
+    id_number: params.cedula,
+    reference: params.paymentId,
+  };
 
-  const res = await fetch(`${MERCANTIL_C2P_URL}/charges`, {
+  const payload = JSON.stringify(body);
+  const signature = signPayload(payload, config.cipherKey);
+
+  const res = await fetch(`${config.apiUrl}/c2p/charges`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "X-Merchant-Id": process.env.MERCANTIL_MERCHANT_ID!,
+      "X-Client-Id": config.clientId,
+      "X-Signature": signature,
     },
-    body: JSON.stringify({
-      amount: params.amount,
-      currency: "VES",
-      phone: params.phone,
-      bank_code: params.bankCode,
-      cedula: params.cedula,
-      reference: params.paymentId,
-    }),
+    body: payload,
   });
 
   if (!res.ok) {
+    const errorBody = await res.text();
+    console.error("Mercantil C2P charge error:", res.status, errorBody);
     throw new Error(`C2P charge failed: ${res.status}`);
   }
 
   const data = await res.json();
   return {
     transactionId: data.transaction_id,
-    status: data.status,
+    status: data.status ?? "pending",
   };
 }
 
+/**
+ * Check the status of a C2P charge.
+ */
 export async function checkC2PStatus(transactionId: string): Promise<C2PStatusResult> {
-  if (!isMercantilConfigured()) {
-    throw new Error("Mercantil not configured");
-  }
+  const config = getC2PConfig();
 
-  const token = await getMercantilToken();
+  const signature = signPayload(transactionId, config.cipherKey);
 
-  const res = await fetch(`${MERCANTIL_C2P_URL}/charges/${transactionId}`, {
+  const res = await fetch(`${config.apiUrl}/c2p/charges/${transactionId}`, {
     headers: {
-      Authorization: `Bearer ${token}`,
-      "X-Merchant-Id": process.env.MERCANTIL_MERCHANT_ID!,
+      "X-Client-Id": config.clientId,
+      "X-Signature": signature,
     },
   });
 
   if (!res.ok) {
+    const errorBody = await res.text();
+    console.error("Mercantil C2P status error:", res.status, errorBody);
     throw new Error(`C2P status check failed: ${res.status}`);
   }
 

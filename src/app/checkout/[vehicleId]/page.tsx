@@ -122,6 +122,7 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
         {/* Payment method selector */}
         <PaymentMethodSelector
           vehicleId={vehicleId}
+          amountVes={priceVes}
           cancelled={cancelled === "true"}
         />
       </div>

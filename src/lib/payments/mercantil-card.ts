@@ -1,117 +1,107 @@
 /**
- * Mercantil Card Payment with AES encryption.
- * Stub implementation: ready for when credentials arrive.
+ * Mercantil Botón de Pagos — Card payment (redirect flow).
+ * Similar to Stripe Checkout: creates an order and redirects to Mercantil's
+ * hosted payment page. Customer enters card details on Mercantil's secure page.
  */
 
-import { createCipheriv, randomBytes } from "crypto";
-import { getMercantilToken, isMercantilConfigured } from "./mercantil-auth";
+import { getCardConfig, signPayload, isMercantilCardConfigured } from "./mercantil-auth";
 
-const MERCANTIL_CARD_URL = "https://api.mercantilbanco.com/payments/v1/card";
+export { isMercantilCardConfigured };
 
-interface CardAuthParams {
-  amount: number;
-  cardNumber: string;
-  expiryMonth: string;
-  expiryYear: string;
-  cvv: string;
-  holderName: string;
+interface CardOrderParams {
+  amountVes: number;
   paymentId: string;
+  description: string;
+  returnUrl: string;
+  cancelUrl: string;
 }
 
-interface CardAuthResult {
+interface CardOrderResult {
+  orderId: string;
+  paymentUrl: string;
+}
+
+interface CardVerifyResult {
   transactionId: string;
-  status: "pending" | "authenticated" | "failed";
-  redirectUrl?: string;
+  status: "completed" | "failed" | "pending";
+  amount: number;
+  reference: string;
 }
 
-interface CardPayResult {
-  transactionId: string;
-  status: "completed" | "failed";
-  completedAt?: string;
-}
+/**
+ * Create a card payment order on Mercantil's Botón de Pagos.
+ * Returns a URL to redirect the customer to.
+ */
+export async function createCardOrder(params: CardOrderParams): Promise<CardOrderResult> {
+  const config = getCardConfig();
 
-function encryptCardData(data: string): { encrypted: string; iv: string } {
-  const key = process.env.MERCANTIL_ENCRYPTION_KEY;
-  if (!key) {
-    throw new Error("MERCANTIL_ENCRYPTION_KEY not configured");
-  }
+  const body = {
+    client_id: config.clientId,
+    affiliate_code: config.affiliateCode,
+    amount: params.amountVes.toFixed(2),
+    currency: "VES",
+    description: params.description,
+    reference: params.paymentId,
+    return_url: params.returnUrl,
+    cancel_url: params.cancelUrl,
+  };
 
-  const iv = randomBytes(16);
-  const cipher = createCipheriv("aes-256-cbc", Buffer.from(key, "hex"), iv);
-  let encrypted = cipher.update(data, "utf8", "base64");
-  encrypted += cipher.final("base64");
+  const payload = JSON.stringify(body);
+  const signature = signPayload(payload, config.cipherKey);
 
-  return { encrypted, iv: iv.toString("base64") };
-}
-
-export async function authenticateCard(params: CardAuthParams): Promise<CardAuthResult> {
-  if (!isMercantilConfigured()) {
-    throw new Error("Mercantil not configured");
-  }
-
-  const token = await getMercantilToken();
-
-  const cardData = JSON.stringify({
-    card_number: params.cardNumber,
-    expiry_month: params.expiryMonth,
-    expiry_year: params.expiryYear,
-    cvv: params.cvv,
-  });
-
-  const { encrypted, iv } = encryptCardData(cardData);
-
-  const res = await fetch(`${MERCANTIL_CARD_URL}/authenticate`, {
+  const res = await fetch(`${config.apiUrl}/button-payment/orders`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      "X-Merchant-Id": process.env.MERCANTIL_MERCHANT_ID!,
+      "X-Client-Id": config.clientId,
+      "X-Signature": signature,
     },
-    body: JSON.stringify({
-      amount: params.amount,
-      currency: "VES",
-      encrypted_card: encrypted,
-      iv,
-      holder_name: params.holderName,
-      reference: params.paymentId,
-    }),
+    body: payload,
   });
 
   if (!res.ok) {
-    throw new Error(`Card auth failed: ${res.status}`);
+    const errorBody = await res.text();
+    console.error("Mercantil Card order error:", res.status, errorBody);
+    throw new Error(`Card order failed: ${res.status}`);
   }
 
   const data = await res.json();
   return {
-    transactionId: data.transaction_id,
-    status: data.status,
-    redirectUrl: data.redirect_url,
+    orderId: data.order_id,
+    paymentUrl: data.payment_url,
   };
 }
 
-export async function processCardPayment(transactionId: string): Promise<CardPayResult> {
-  if (!isMercantilConfigured()) {
-    throw new Error("Mercantil not configured");
+/**
+ * Verify a card payment callback from Mercantil.
+ * Called when the customer returns from Mercantil's payment page.
+ */
+export function verifyCardCallback(
+  queryParams: Record<string, string>,
+  expectedSignature: string
+): CardVerifyResult | null {
+  const config = getCardConfig();
+
+  // Build verification payload from query params
+  const verificationString = [
+    queryParams.order_id,
+    queryParams.transaction_id,
+    queryParams.status,
+    queryParams.amount,
+    queryParams.reference,
+  ].join("|");
+
+  const computedSignature = signPayload(verificationString, config.cipherKey);
+
+  if (computedSignature !== expectedSignature) {
+    console.error("Mercantil Card callback signature mismatch");
+    return null;
   }
 
-  const token = await getMercantilToken();
-
-  const res = await fetch(`${MERCANTIL_CARD_URL}/pay/${transactionId}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "X-Merchant-Id": process.env.MERCANTIL_MERCHANT_ID!,
-    },
-  });
-
-  if (!res.ok) {
-    throw new Error(`Card payment failed: ${res.status}`);
-  }
-
-  const data = await res.json();
   return {
-    transactionId: data.transaction_id,
-    status: data.status,
-    completedAt: data.completed_at,
+    transactionId: queryParams.transaction_id,
+    status: queryParams.status as "completed" | "failed" | "pending",
+    amount: parseFloat(queryParams.amount),
+    reference: queryParams.reference,
   };
 }

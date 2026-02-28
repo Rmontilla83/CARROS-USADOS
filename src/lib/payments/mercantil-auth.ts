@@ -1,53 +1,61 @@
 /**
- * Mercantil OAuth2 authentication.
- * Returns cached token or fetches new one from Mercantil API.
- * All functions are stubs until MERCANTIL_CLIENT_ID and MERCANTIL_CLIENT_SECRET
- * environment variables are configured.
+ * Mercantil authentication and request signing utilities.
+ * Separate configuration checks per product (Card vs C2P).
  */
 
-const MERCANTIL_AUTH_URL = "https://api.mercantilbanco.com/auth/oauth/v2/token";
+import { createHmac } from "crypto";
 
-let cachedToken: { token: string; expiresAt: number } | null = null;
+// ─── Card (Botón de Pagos) ───
 
-export function isMercantilConfigured(): boolean {
+export function isMercantilCardConfigured(): boolean {
   return !!(
-    process.env.MERCANTIL_CLIENT_ID &&
-    process.env.MERCANTIL_CLIENT_SECRET &&
-    process.env.MERCANTIL_MERCHANT_ID
+    process.env.MERCANTIL_CARD_CLIENT_ID &&
+    process.env.MERCANTIL_CARD_AFFILIATE_CODE &&
+    process.env.MERCANTIL_CARD_CIPHER_KEY &&
+    process.env.MERCANTIL_CARD_API_URL
   );
 }
 
-export async function getMercantilToken(): Promise<string> {
-  if (!isMercantilConfigured()) {
-    throw new Error("Mercantil credentials not configured");
+export function getCardConfig() {
+  if (!isMercantilCardConfigured()) {
+    throw new Error("Mercantil Card credentials not configured");
   }
-
-  // Return cached token if still valid (with 60s buffer)
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
-    return cachedToken.token;
-  }
-
-  const res = await fetch(MERCANTIL_AUTH_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      client_id: process.env.MERCANTIL_CLIENT_ID!,
-      client_secret: process.env.MERCANTIL_CLIENT_SECRET!,
-      scope: "payments",
-    }),
-  });
-
-  if (!res.ok) {
-    throw new Error(`Mercantil auth failed: ${res.status}`);
-  }
-
-  const data = await res.json();
-
-  cachedToken = {
-    token: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
+  return {
+    clientId: process.env.MERCANTIL_CARD_CLIENT_ID!,
+    affiliateCode: process.env.MERCANTIL_CARD_AFFILIATE_CODE!,
+    cipherKey: process.env.MERCANTIL_CARD_CIPHER_KEY!,
+    apiUrl: process.env.MERCANTIL_CARD_API_URL!,
   };
+}
 
-  return cachedToken.token;
+// ─── C2P (Pago Móvil) ───
+
+export function isMercantilC2PConfigured(): boolean {
+  return !!(
+    process.env.MERCANTIL_C2P_CLIENT_ID &&
+    process.env.MERCANTIL_C2P_MERCHANT_ID &&
+    process.env.MERCANTIL_C2P_CIPHER_KEY &&
+    process.env.MERCANTIL_C2P_API_URL
+  );
+}
+
+export function getC2PConfig() {
+  if (!isMercantilC2PConfigured()) {
+    throw new Error("Mercantil C2P credentials not configured");
+  }
+  return {
+    clientId: process.env.MERCANTIL_C2P_CLIENT_ID!,
+    merchantId: process.env.MERCANTIL_C2P_MERCHANT_ID!,
+    cipherKey: process.env.MERCANTIL_C2P_CIPHER_KEY!,
+    apiUrl: process.env.MERCANTIL_C2P_API_URL!,
+  };
+}
+
+// ─── Shared utilities ───
+
+/**
+ * HMAC-SHA256 signature for Mercantil API requests.
+ */
+export function signPayload(payload: string, cipherKey: string): string {
+  return createHmac("sha256", cipherKey).update(payload).digest("hex");
 }

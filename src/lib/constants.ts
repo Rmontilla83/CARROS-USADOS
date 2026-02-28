@@ -7,10 +7,10 @@ export const BCV_RATE_FALLBACK = 80.0;
 
 // Payment methods configuration
 export const PAYMENT_METHODS = {
-  stripe: { id: "stripe" as const, label: "Tarjeta de Crédito/Débito", enabled: true },
-  mercantil_c2p: { id: "mercantil_c2p" as const, label: "Pago Móvil (C2P)", enabled: false },
+  stripe: { id: "stripe" as const, label: "Tarjeta Internacional", enabled: true },
+  mercantil_card: { id: "mercantil_card" as const, label: "Tarjeta Nacional", enabled: true },
+  mercantil_c2p: { id: "mercantil_c2p" as const, label: "Pago Móvil (C2P)", enabled: true },
   mercantil_debit: { id: "mercantil_debit" as const, label: "Débito Inmediato", enabled: false },
-  mercantil_card: { id: "mercantil_card" as const, label: "Tarjeta Nacional", enabled: false },
 } as const;
 
 // Vehicle constraints
