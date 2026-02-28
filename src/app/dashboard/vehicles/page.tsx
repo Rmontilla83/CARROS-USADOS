@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Car, Eye, QrCode, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SuccessMessage } from "@/components/layout/success-message";
-import { DashboardStats } from "@/components/dashboard/dashboard-stats";
+import { VehicleCards } from "@/components/dashboard/vehicle-cards";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
+  title: "Mis Vehículos",
 };
 
-export default function DashboardPage() {
+export default function VehiclesPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Resumen</h1>
+          <h1 className="text-2xl font-bold text-foreground">Mis Vehículos</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Vista general de tu actividad
+            Gestiona tus publicaciones
           </p>
         </div>
         <Button
@@ -26,28 +25,24 @@ export default function DashboardPage() {
         >
           <Link href="/dashboard/publish">
             <Plus className="size-4" />
-            <span className="hidden sm:inline">Publicar</span> Vehículo
+            Publicar
           </Link>
         </Button>
       </div>
 
-      <Suspense>
-        <SuccessMessage />
-      </Suspense>
-
       <Suspense
         fallback={
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-28 animate-pulse rounded-lg border border-border bg-card"
+                className="h-64 animate-pulse rounded-lg border border-border bg-card"
               />
             ))}
           </div>
         }
       >
-        <DashboardStats />
+        <VehicleCards />
       </Suspense>
     </div>
   );

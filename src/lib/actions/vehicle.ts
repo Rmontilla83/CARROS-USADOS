@@ -105,3 +105,38 @@ export async function publishVehicle(
 
   redirect("/dashboard?published=true");
 }
+
+export interface MarkAsSoldResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function markVehicleAsSold(
+  vehicleId: string
+): Promise<MarkAsSoldResult> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "No autenticado" };
+  }
+
+  const { error } = await supabase
+    .from("vehicles")
+    .update({
+      status: "sold",
+      sold_at: new Date().toISOString(),
+    })
+    .eq("id", vehicleId)
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Mark as sold error:", error);
+    return { success: false, error: "Error al marcar como vendido." };
+  }
+
+  return { success: true };
+}
