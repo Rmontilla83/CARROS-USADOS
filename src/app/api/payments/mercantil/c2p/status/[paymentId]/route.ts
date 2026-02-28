@@ -1,0 +1,14 @@
+import { NextResponse } from "next/server";
+import { isMercantilConfigured } from "@/lib/payments/mercantil-auth";
+
+export async function GET() {
+  if (!isMercantilConfigured()) {
+    return NextResponse.json(
+      { error: "Pago Móvil no disponible por el momento" },
+      { status: 503 }
+    );
+  }
+
+  // TODO: Implement when Mercantil credentials are available
+  return NextResponse.json({ error: "Not implemented" }, { status: 501 });
+}
