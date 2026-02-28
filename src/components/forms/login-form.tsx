@@ -5,18 +5,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
+import { Car } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { createClient } from "@/lib/supabase/client";
 
@@ -61,82 +54,97 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary px-4 py-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <Link href="/" className="mx-auto mb-2 text-2xl font-bold text-primary">
-            CarrosUsados
-          </Link>
-          <CardTitle className="text-xl">Iniciar sesión</CardTitle>
-          <CardDescription>
-            Ingresa a tu cuenta para gestionar tus vehículos
-          </CardDescription>
-        </CardHeader>
+    <div className="flex min-h-screen">
+      {/* Left panel - decorative (hidden on mobile) */}
+      <div className="hidden w-1/2 bg-gradient-to-br from-[#1B4F72] via-[#1a5276] to-[#2E86C1] lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
+        <div className="max-w-md text-center">
+          <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+            <Car className="size-8 text-white" />
+          </div>
+          <h2 className="text-3xl font-bold text-white">Bienvenido de vuelta</h2>
+          <p className="mt-3 text-lg text-white/70">
+            Gestiona tus publicaciones, revisa tus analytics y conecta con compradores.
+          </p>
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
+      {/* Right panel - form */}
+      <div className="flex flex-1 flex-col items-center justify-center bg-white px-4 py-8 sm:px-8">
+        <div className="w-full max-w-md">
+          {/* Mobile logo */}
+          <Link href="/" className="mb-8 flex items-center gap-2 lg:hidden">
+            <div className="rounded-lg bg-primary p-1.5">
+              <Car className="size-5 text-white" />
+            </div>
+            <span className="text-xl font-bold text-primary">CarrosUsados</span>
+          </Link>
+
+          <h1 className="text-2xl font-bold text-foreground">Iniciar sesión</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ingresa a tu cuenta para gestionar tus vehículos
+          </p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="mt-8 space-y-5">
             {serverError && (
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 {serverError}
               </div>
             )}
 
-            {/* Email */}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
                 placeholder="tu@email.com"
+                className="h-11"
                 {...register("email")}
                 aria-invalid={!!errors.email}
               />
               {errors.email && (
-                <p className="text-sm text-destructive">
-                  {errors.email.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.email.message}</p>
               )}
             </div>
 
-            {/* Password */}
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>
               <Input
                 id="password"
                 type="password"
                 placeholder="Tu contraseña"
+                className="h-11"
                 {...register("password")}
                 aria-invalid={!!errors.password}
               />
               {errors.password && (
-                <p className="text-sm text-destructive">
-                  {errors.password.message}
-                </p>
+                <p className="text-sm text-destructive">{errors.password.message}</p>
               )}
             </div>
-          </CardContent>
 
-          <CardFooter className="flex flex-col gap-4">
             <Button
               type="submit"
-              className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
-              size="lg"
+              className="h-12 w-full bg-accent text-base font-semibold text-white shadow-lg shadow-accent/25 hover:bg-accent/90"
               disabled={isLoading}
             >
               {isLoading ? "Ingresando..." : "Iniciar sesión"}
             </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              ¿No tienes cuenta?{" "}
-              <Link
-                href="/register"
-                className="font-medium text-primary hover:underline"
-              >
-                Regístrate aquí
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+          </form>
+
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            ¿No tienes cuenta?{" "}
+            <Link href="/register" className="font-semibold text-accent hover:underline">
+              Regístrate aquí
+            </Link>
+          </p>
+
+          <Link
+            href="/"
+            className="mt-8 block text-center text-xs text-muted-foreground hover:text-foreground"
+          >
+            ← Volver al inicio
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

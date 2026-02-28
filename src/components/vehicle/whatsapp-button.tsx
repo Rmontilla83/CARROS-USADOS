@@ -1,7 +1,6 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { APP_NAME } from "@/lib/constants";
 
 interface Props {
@@ -12,7 +11,6 @@ interface Props {
 }
 
 export function WhatsAppButton({ phone, brand, model, year }: Props) {
-  // Normalize phone: remove spaces, parentheses, dashes
   const cleanPhone = phone.replace(/[\s()\-+]/g, "");
 
   const message = encodeURIComponent(
@@ -22,15 +20,14 @@ export function WhatsAppButton({ phone, brand, model, year }: Props) {
   const url = `https://wa.me/${cleanPhone}?text=${message}`;
 
   return (
-    <Button
-      asChild
-      size="lg"
-      className="w-full bg-[#25D366] text-white hover:bg-[#1ebe57] text-base"
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-[#25D366] py-4 text-base font-bold text-white shadow-lg shadow-[#25D366]/25 transition-all hover:bg-[#1ebe57] hover:shadow-xl active:scale-[0.98]"
     >
-      <a href={url} target="_blank" rel="noopener noreferrer">
-        <MessageCircle className="size-5" />
-        Contactar por WhatsApp
-      </a>
-    </Button>
+      <MessageCircle className="size-5" />
+      Contactar por WhatsApp
+    </a>
   );
 }

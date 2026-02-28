@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 interface Props {
   error: Error & { digest?: string };
@@ -15,20 +14,22 @@ export default function GlobalError({ error, reset }: Props) {
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <AlertTriangle className="size-16 text-destructive/50" />
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-secondary to-white px-4">
+      <div className="rounded-2xl bg-destructive/10 p-4">
+        <AlertTriangle className="size-12 text-destructive" />
+      </div>
       <h1 className="mt-6 text-2xl font-bold text-foreground">
         Algo salió mal
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Ocurrió un error inesperado. Por favor intenta de nuevo.
       </p>
-      <Button
+      <button
         onClick={reset}
-        className="mt-6 bg-primary text-primary-foreground"
+        className="mt-8 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary/90"
       >
         Reintentar
-      </Button>
+      </button>
     </div>
   );
 }

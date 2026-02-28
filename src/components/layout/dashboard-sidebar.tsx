@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   X,
+  Home,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -55,10 +56,12 @@ export function DashboardSidebar({ userName, userEmail }: Props) {
   const navContent = (
     <>
       {/* Logo */}
-      <div className="flex items-center gap-2 px-3 py-2">
-        <Car className="size-6 text-primary" />
+      <Link href="/" className="flex items-center gap-2.5 px-3 py-2 group">
+        <div className="rounded-lg bg-accent p-1.5 transition-transform group-hover:scale-110">
+          <Car className="size-5 text-white" />
+        </div>
         <span className="text-lg font-bold text-primary">{APP_NAME}</span>
-      </div>
+      </Link>
 
       {/* Nav links */}
       <nav className="mt-6 flex flex-col gap-1">
@@ -69,9 +72,9 @@ export function DashboardSidebar({ userName, userEmail }: Props) {
               key={item.href}
               href={item.href}
               onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all ${
                 active
-                  ? "bg-primary/10 text-primary"
+                  ? "bg-primary text-white shadow-md shadow-primary/25"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               }`}
             >
@@ -82,17 +85,29 @@ export function DashboardSidebar({ userName, userEmail }: Props) {
         })}
       </nav>
 
+      {/* Back to home */}
+      <div className="mt-6 border-t border-border pt-4">
+        <Link
+          href="/"
+          onClick={() => setOpen(false)}
+          className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+        >
+          <Home className="size-4 shrink-0" />
+          Ir a la página principal
+        </Link>
+      </div>
+
       {/* User info + sign out at bottom */}
       <div className="mt-auto border-t border-border pt-4">
         <div className="px-3 pb-2">
-          <p className="truncate text-sm font-medium text-foreground">
+          <p className="truncate text-sm font-semibold text-foreground">
             {userName}
           </p>
           <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
         </div>
         <button
           onClick={handleSignOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
         >
           <LogOut className="size-4 shrink-0" />
           Cerrar Sesión
@@ -109,7 +124,7 @@ export function DashboardSidebar({ userName, userEmail }: Props) {
       </aside>
 
       {/* Mobile header with hamburger */}
-      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-white px-4 lg:hidden">
+      <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-border bg-white/95 px-4 backdrop-blur-md lg:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="shrink-0">
@@ -128,7 +143,9 @@ export function DashboardSidebar({ userName, userEmail }: Props) {
           href="/dashboard"
           className="flex items-center gap-2 text-lg font-bold text-primary"
         >
-          <Car className="size-5" />
+          <div className="rounded-lg bg-accent p-1">
+            <Car className="size-4 text-white" />
+          </div>
           {APP_NAME}
         </Link>
       </header>

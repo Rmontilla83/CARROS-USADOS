@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Car, Eye, QrCode, ExternalLink } from "lucide-react";
+import { Car, Eye, QrCode } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/server";
 import type { Vehicle, Media, VehicleStatus } from "@/types";
@@ -66,12 +66,14 @@ export async function VehicleCards() {
 
   if (typedVehicles.length === 0) {
     return (
-      <div className="mt-8 rounded-lg border border-border bg-card p-8 text-center">
-        <Car className="mx-auto size-10 text-muted-foreground/40" />
-        <p className="mt-3 text-muted-foreground">
-          Aún no tienes vehículos publicados.
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <div className="mt-8 rounded-2xl border border-dashed border-border bg-white p-10 text-center">
+        <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-primary/10">
+          <Car className="size-8 text-primary/40" />
+        </div>
+        <h3 className="mt-4 text-lg font-bold text-foreground">
+          Sin vehículos aún
+        </h3>
+        <p className="mt-2 text-sm text-muted-foreground">
           Haz clic en &quot;Publicar&quot; para comenzar.
         </p>
       </div>
@@ -95,7 +97,7 @@ export async function VehicleCards() {
   }
 
   return (
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {typedVehicles.map((vehicle) => {
         const statusConfig = STATUS_CONFIG[vehicle.status];
         const coverUrl = coverMap.get(vehicle.id);
@@ -104,47 +106,46 @@ export async function VehicleCards() {
           <Link
             key={vehicle.id}
             href={`/dashboard/vehicles/${vehicle.id}`}
-            className="group overflow-hidden rounded-lg border border-border bg-card transition-shadow hover:shadow-md"
+            className="group overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
           >
             {/* Cover photo */}
-            <div className="relative aspect-[4/3] bg-secondary">
+            <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
               {coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={coverUrl}
                   alt={`${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
                   loading="lazy"
-                  className="size-full object-cover"
+                  className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : (
                 <div className="flex size-full items-center justify-center">
-                  <Car className="size-12 text-muted-foreground/30" />
+                  <Car className="size-12 text-muted-foreground/20" />
                 </div>
               )}
               <Badge
-                className={`absolute right-2 top-2 border text-[11px] ${statusConfig.className}`}
+                className={`absolute right-3 top-3 border text-[11px] font-semibold shadow-sm ${statusConfig.className}`}
               >
                 {statusConfig.label}
               </Badge>
             </div>
 
             {/* Info */}
-            <div className="p-3">
-              <h3 className="truncate font-semibold text-foreground group-hover:text-primary">
+            <div className="p-4">
+              <h3 className="truncate text-lg font-bold text-foreground group-hover:text-primary transition-colors">
                 {vehicle.brand} {vehicle.model} {vehicle.year}
               </h3>
-              <p className="mt-0.5 text-lg font-bold text-foreground">
+              <p className="mt-1 text-xl font-extrabold text-accent">
                 ${vehicle.price.toLocaleString("en-US")}
               </p>
 
-              <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
+              <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
                   <Eye className="size-3.5" />
-                  {vehicle.views_count}
+                  {vehicle.views_count} visitas
                 </span>
-                <span className="inline-flex items-center gap-1">
+                <span className="inline-flex items-center gap-1.5">
                   <QrCode className="size-3.5" />
-                  {vehicle.qr_scans_count}
+                  {vehicle.qr_scans_count} escaneos
                 </span>
               </div>
             </div>

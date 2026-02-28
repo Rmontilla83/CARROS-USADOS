@@ -12,9 +12,10 @@ import {
   Settings,
   CheckCircle2,
   TrendingUp,
+  Eye,
+  ArrowLeft,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { PhotoGallery } from "@/components/vehicle/photo-gallery";
 import { WhatsAppButton } from "@/components/vehicle/whatsapp-button";
 import { ShareButton } from "@/components/vehicle/share-button";
@@ -71,7 +72,6 @@ async function getVehicle(slug: string) {
   const photos = ((media as Media[]) || []).filter((m) => m.type === "photo");
   const video = ((media as Media[]) || []).find((m) => m.type === "video") || null;
 
-  // Sort cover photo first
   photos.sort((a, b) => {
     if (a.is_cover && !b.is_cover) return -1;
     if (!a.is_cover && b.is_cover) return 1;
@@ -130,8 +130,6 @@ export default async function VehicleCardPage({ params }: PageProps) {
   );
 
   const specs = [
-    { icon: Car, label: "Marca", value: vehicle.brand },
-    { icon: Car, label: "Modelo", value: vehicle.model },
     { icon: Calendar, label: "Año", value: vehicle.year.toString() },
     {
       icon: Gauge,
@@ -149,31 +147,37 @@ export default async function VehicleCardPage({ params }: PageProps) {
   ];
 
   if (vehicle.engine) {
-    specs.push({
-      icon: Settings,
-      label: "Motor",
-      value: vehicle.engine,
-    });
+    specs.push({ icon: Settings, label: "Motor", value: vehicle.engine });
   }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Track view */}
       <ViewTracker vehicleId={vehicle.id} />
 
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex h-12 max-w-lg items-center justify-between px-4">
+      <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-lg items-center justify-between px-4">
           <Link
             href="/"
-            className="text-sm font-bold text-primary"
+            className="flex items-center gap-2 text-sm font-bold text-primary"
           >
+            <div className="rounded-md bg-primary p-1">
+              <Car className="size-3.5 text-white" />
+            </div>
             {APP_NAME}
           </Link>
-          <ShareButton
-            title={`${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
-            url={`${APP_URL}/${slug}`}
-          />
+          <div className="flex items-center gap-2">
+            <ShareButton
+              title={`${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
+              url={`${APP_URL}/${slug}`}
+            />
+            <Link
+              href="/"
+              className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Ver más carros
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -181,25 +185,30 @@ export default async function VehicleCardPage({ params }: PageProps) {
         {/* Photo Gallery */}
         <PhotoGallery photos={photos} />
 
-        <div className="space-y-5 p-4">
-          {/* Title + Price */}
-          <div>
-            <h1 className="text-xl font-bold text-foreground sm:text-2xl">
+        <div className="space-y-6 p-4">
+          {/* Title + Price block */}
+          <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+            <h1 className="text-2xl font-extrabold text-foreground">
               {vehicle.brand} {vehicle.model} {vehicle.year}
             </h1>
             {seller?.city && (
-              <p className="mt-0.5 text-sm text-muted-foreground">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {seller.city}, Anzoátegui
               </p>
             )}
-            <div className="mt-3 flex items-center gap-3">
-              <span className="text-3xl font-bold text-foreground">
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-4xl font-extrabold text-accent">
                 ${vehicle.price.toLocaleString("en-US", { minimumFractionDigits: 0 })}
               </span>
-              <Badge className="bg-accent text-accent-foreground">
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Badge className="bg-accent/10 text-accent border-accent/20">
                 <TrendingUp className="size-3" />
                 Precio justo
               </Badge>
+              <span className="text-xs text-muted-foreground">
+                <Eye className="inline size-3" /> {vehicle.views_count} visitas
+              </span>
             </div>
           </div>
 
@@ -213,25 +222,25 @@ export default async function VehicleCardPage({ params }: PageProps) {
             />
           )}
 
-          <Separator />
-
           {/* Specifications grid */}
-          <div>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+            <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-muted-foreground">
               Especificaciones
             </h2>
             <div className="grid grid-cols-2 gap-3">
               {specs.map((spec) => (
                 <div
                   key={spec.label}
-                  className="flex items-center gap-2.5 rounded-lg border border-border p-3"
+                  className="flex items-center gap-3 rounded-xl bg-secondary/60 p-3"
                 >
-                  <spec.icon className="size-4 shrink-0 text-primary" />
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <spec.icon className="size-4 text-primary" />
+                  </div>
                   <div className="min-w-0">
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[11px] font-medium text-muted-foreground">
                       {spec.label}
                     </p>
-                    <p className="truncate text-sm font-medium text-foreground">
+                    <p className="truncate text-sm font-bold text-foreground">
                       {spec.value}
                     </p>
                   </div>
@@ -242,80 +251,87 @@ export default async function VehicleCardPage({ params }: PageProps) {
 
           {/* Conditions */}
           {activeConditions.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Condiciones
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {activeConditions.map((c) => (
-                    <Badge
-                      key={c.key}
-                      variant="secondary"
-                      className="flex items-center gap-1 py-1"
-                    >
-                      <CheckCircle2 className="size-3 text-accent" />
-                      {c.label}
-                    </Badge>
-                  ))}
-                </div>
+            <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Condiciones
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {activeConditions.map((c) => (
+                  <span
+                    key={c.key}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-accent/10 px-3 py-1.5 text-sm font-medium text-accent"
+                  >
+                    <CheckCircle2 className="size-3.5" />
+                    {c.label}
+                  </span>
+                ))}
               </div>
-            </>
+            </div>
           )}
 
           {/* Description */}
           {vehicle.description && (
-            <>
-              <Separator />
-              <div>
-                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Descripción
-                </h2>
-                <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
-                  {vehicle.description}
-                </p>
-              </div>
-            </>
+            <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Descripción
+              </h2>
+              <p className="whitespace-pre-line text-sm leading-relaxed text-foreground">
+                {vehicle.description}
+              </p>
+            </div>
           )}
 
           {/* Video */}
           {video && (
-            <>
-              <Separator />
-              <div>
-                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                  Video
-                </h2>
-                <video
-                  src={video.url}
-                  controls
-                  preload="metadata"
-                  className="w-full rounded-lg bg-black"
-                  aria-label={`Video del ${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
-                />
-              </div>
-            </>
+            <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                Video
+              </h2>
+              <video
+                src={video.url}
+                controls
+                preload="metadata"
+                className="w-full rounded-xl bg-black"
+                aria-label={`Video del ${vehicle.brand} ${vehicle.model} ${vehicle.year}`}
+              />
+            </div>
           )}
 
-          <Separator />
-
           {/* Feedback */}
-          <FeedbackForm vehicleId={vehicle.id} />
+          <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+            <FeedbackForm vehicleId={vehicle.id} />
+          </div>
 
-          {/* Footer */}
-          <div className="pb-6 pt-2 text-center">
-            <p className="text-xs text-muted-foreground">
+          {/* Back to catalog + footer */}
+          <div className="space-y-4 pb-24 pt-4">
+            <Link
+              href="/"
+              className="flex items-center justify-center gap-2 rounded-xl border border-border bg-white py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <ArrowLeft className="size-4" />
+              Ver más vehículos disponibles
+            </Link>
+            <p className="text-center text-xs text-muted-foreground">
               Publicado en{" "}
               <Link href="/" className="font-medium text-primary hover:underline">
                 {APP_NAME}
               </Link>
-              {" · "}
-              {vehicle.views_count} visitas
             </p>
           </div>
         </div>
       </main>
+
+      {/* Floating WhatsApp button (mobile) */}
+      {seller?.phone && (
+        <div className="fixed bottom-4 left-4 right-4 z-50 sm:hidden">
+          <WhatsAppButton
+            phone={seller.phone}
+            brand={vehicle.brand}
+            model={vehicle.model}
+            year={vehicle.year}
+          />
+        </div>
+      )}
     </div>
   );
 }
