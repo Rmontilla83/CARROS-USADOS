@@ -33,8 +33,8 @@ const STATUS_CONFIG: Record<
     className: "bg-blue-100 text-blue-700 border-blue-300",
   },
   draft: {
-    label: "Borrador",
-    className: "bg-gray-100 text-gray-600 border-gray-300",
+    label: "Pendiente de pago",
+    className: "bg-amber-100 text-amber-700 border-amber-300",
   },
   pending_review: {
     label: "En revisión",
@@ -111,10 +111,14 @@ export async function VehicleCards() {
           );
         }
 
+        const href = vehicle.status === "draft"
+          ? `/checkout/${vehicle.id}`
+          : `/dashboard/vehicles/${vehicle.id}`;
+
         return (
           <Link
             key={vehicle.id}
-            href={`/dashboard/vehicles/${vehicle.id}`}
+            href={href}
             className="group overflow-hidden rounded-2xl border border-border bg-white shadow-sm transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
           >
             {/* Cover photo */}
