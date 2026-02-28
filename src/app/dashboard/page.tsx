@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SuccessMessage } from "@/components/layout/success-message";
+import { VehicleList } from "@/components/vehicle/vehicle-list";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -31,14 +32,15 @@ export default function DashboardPage() {
         <SuccessMessage />
       </Suspense>
 
-      <div className="mt-8 rounded-lg border border-border bg-card p-8 text-center">
-        <p className="text-muted-foreground">
-          Aún no tienes vehículos publicados.
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Haz clic en &quot;Publicar Vehículo&quot; para comenzar.
-        </p>
-      </div>
+      <Suspense
+        fallback={
+          <div className="mt-8 animate-pulse rounded-lg border border-border bg-card p-8 text-center">
+            <p className="text-muted-foreground">Cargando vehículos...</p>
+          </div>
+        }
+      >
+        <VehicleList />
+      </Suspense>
     </div>
   );
 }
