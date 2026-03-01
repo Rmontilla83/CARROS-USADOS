@@ -62,6 +62,7 @@ export async function analyzePriceWithAI(
         argument_max: result.argument_max,
         argument_suggested: result.argument_suggested,
         market_summary: result.market_summary,
+        data_sources: result.sources,
       });
 
       // Update vehicle's suggested_price

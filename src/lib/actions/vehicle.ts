@@ -338,17 +338,11 @@ export async function updateVehicle(
 
     const report = aiReport as { market_price_low: number | null; market_price_high: number | null } | null;
 
-    if (report?.market_price_low != null && report?.market_price_high != null) {
+    if (report?.market_price_low != null) {
       if (parsed.data.price < report.market_price_low) {
         return {
           success: false,
           error: `El precio no puede ser menor a $${report.market_price_low.toLocaleString("en-US")} (mínimo del reporte IA)`,
-        };
-      }
-      if (parsed.data.price > report.market_price_high) {
-        return {
-          success: false,
-          error: `El precio no puede ser mayor a $${report.market_price_high.toLocaleString("en-US")} (máximo del reporte IA)`,
         };
       }
     }

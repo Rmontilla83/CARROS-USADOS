@@ -13,6 +13,10 @@ export const aiPriceResponseSchema = z.object({
   argument_max: z.string(),
   argument_suggested: z.string(),
   market_summary: z.string(),
+  sources: z.array(z.object({
+    name: z.string(),
+    detail: z.string(),
+  })),
 });
 
 export type AiPriceResponse = z.infer<typeof aiPriceResponseSchema>;
@@ -117,16 +121,17 @@ CONTEXTO DEL MERCADO VENEZOLANO que DEBES considerar:
 
 INSTRUCCIONES ESTRICTAS:
 - price_min: precio MINIMO absoluto. Por debajo de esto es sospechoso o irreal
-- price_max: precio MAXIMO que el mercado soporta. Por encima no se vende
+- price_max: precio MAXIMO razonable de mercado. Es una referencia, NO un limite — el vendedor puede poner un precio mayor si lo desea
 - price_suggested: precio optimo para vender en ~30 dias
 - price_market_avg: promedio real del mercado para este vehiculo
 - confidence: 0-100, que tan seguro estas del analisis
 - factors_up: MINIMO 2 factores que SUBEN el precio de este vehiculo especifico
 - factors_down: MINIMO 2 factores que BAJAN el precio de este vehiculo especifico
-- argument_min: explicacion convincente de por que ese es el minimo (2-3 oraciones, en espanol)
-- argument_max: explicacion de por que ese es el maximo (2-3 oraciones, en espanol)
-- argument_suggested: por que el precio sugerido es el optimo (2-3 oraciones, en espanol)
-- market_summary: resumen ejecutivo del mercado para este vehiculo (2-3 oraciones, en espanol)
+- argument_min: explicacion DETALLADA de por que ese es el minimo. Menciona datos concretos: comparaciones con vehiculos similares publicados, depreciacion por ano/km, estado del mercado. Minimo 3-4 oraciones en espanol
+- argument_max: explicacion DETALLADA de por que ese es el maximo razonable. Incluye referencias a publicaciones reales de vehiculos similares, que condiciones tendria que tener para alcanzar ese precio. Minimo 3-4 oraciones en espanol
+- argument_suggested: por que el precio sugerido es el optimo. Explica el balance entre velocidad de venta y valor justo, comparando con el rango. Minimo 3-4 oraciones en espanol
+- market_summary: resumen ejecutivo del mercado para este vehiculo, incluyendo tendencia de precios (subiendo/bajando/estable), oferta vs demanda, y tiempo promedio de venta. Minimo 3-4 oraciones en espanol
+- sources: array de fuentes consultadas para el analisis. Cada fuente tiene "name" (nombre de la plataforma o referencia) y "detail" (que datos especificos se usaron de esa fuente). MINIMO 3 fuentes. Ejemplos de fuentes: "TuCarro.com", "MercadoLibre Venezuela", "Marketplace Facebook (grupos de compraventa Anzoategui)", "Historial de depreciacion del modelo", "Indice BCV de inflacion", "Estadisticas de importacion SENIAT". Se especifico en el detalle — menciona rangos de precios encontrados y cantidades de publicaciones
 
 Responde UNICAMENTE con un objeto JSON valido (sin markdown, sin backticks, sin texto adicional):
 {
@@ -140,7 +145,8 @@ Responde UNICAMENTE con un objeto JSON valido (sin markdown, sin backticks, sin 
   "argument_min": "",
   "argument_max": "",
   "argument_suggested": "",
-  "market_summary": ""
+  "market_summary": "",
+  "sources": [{"name": "", "detail": ""}]
 }`;
 
   const result = await model.generateContent(prompt);

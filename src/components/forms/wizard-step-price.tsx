@@ -12,6 +12,7 @@ import {
   ChevronUp,
   CheckCircle2,
   XCircle,
+  AlertTriangle,
   Zap,
   RefreshCw,
 } from "lucide-react";
@@ -65,7 +66,7 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
     return "in_range" as const;
   }, [currentPrice, aiResult]);
 
-  const canSubmit = !!aiResult && !!priceStatus && priceStatus !== "below_min" && priceStatus !== "above_max";
+  const canSubmit = !!aiResult && !!priceStatus && priceStatus !== "below_min";
 
   function onSubmit(values: VehiclePriceFormData) {
     if (!canSubmit) return;
@@ -304,6 +305,19 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
                 <p className="text-xs font-bold text-foreground mb-1">Resumen del mercado</p>
                 <p className="text-sm text-muted-foreground">{aiResult.market_summary}</p>
               </div>
+              {aiResult.sources && aiResult.sources.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-foreground mb-1">Fuentes consultadas</p>
+                  <ul className="space-y-1.5">
+                    {aiResult.sources.map((source, i) => (
+                      <li key={i} className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{source.name}</span>
+                        {" — "}{source.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -324,7 +338,7 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
             className="pl-7"
             disabled={analyzing}
             {...register("price", { valueAsNumber: true })}
-            aria-invalid={!!errors.price || priceStatus === "below_min" || priceStatus === "above_max"}
+            aria-invalid={!!errors.price || priceStatus === "below_min"}
           />
         </div>
         {errors.price && (
@@ -344,13 +358,13 @@ export function WizardStepPrice({ data, onNext, onBack }: Props) {
           </div>
         )}
         {priceStatus === "above_max" && aiResult && (
-          <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3">
-            <XCircle className="size-4 shrink-0 text-red-600 mt-0.5" />
+          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
+            <AlertTriangle className="size-4 shrink-0 text-amber-600 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-red-800">
-                El precio maximo para este vehiculo es ${aiResult.price_max.toLocaleString("en-US")}
+              <p className="text-sm font-medium text-amber-800">
+                Tu precio esta por encima del maximo de mercado (${aiResult.price_max.toLocaleString("en-US")})
               </p>
-              <p className="text-xs text-red-600 mt-1">{aiResult.argument_max}</p>
+              <p className="text-xs text-amber-700 mt-1">{aiResult.argument_max}</p>
             </div>
           </div>
         )}

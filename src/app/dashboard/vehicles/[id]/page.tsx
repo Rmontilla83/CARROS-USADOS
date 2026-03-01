@@ -110,7 +110,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
   // Fetch AI price report
   const { data: aiReport } = await supabase
     .from("ai_price_reports")
-    .select("suggested_price, market_price_low, market_price_high, price_market_avg, confidence, factors_up, factors_down, argument_min, argument_max, argument_suggested, market_summary, generated_at")
+    .select("suggested_price, market_price_low, market_price_high, price_market_avg, confidence, factors_up, factors_down, argument_min, argument_max, argument_suggested, market_summary, data_sources, generated_at")
     .eq("vehicle_id", v.id)
     .order("generated_at", { ascending: false })
     .limit(1)
@@ -128,6 +128,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
     argument_max: string | null;
     argument_suggested: string | null;
     market_summary: string | null;
+    data_sources: { name: string; detail: string }[] | null;
     generated_at: string | null;
   } | null;
 
@@ -348,6 +349,21 @@ export default async function VehicleDetailPage({ params }: PageProps) {
             <p className="text-sm text-muted-foreground leading-relaxed">
               {typedAiReport.market_summary}
             </p>
+          )}
+
+          {/* Sources */}
+          {typedAiReport.data_sources && typedAiReport.data_sources.length > 0 && (
+            <div className="mt-4 rounded-lg bg-white/60 p-3 border border-border">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-2">Fuentes del análisis</p>
+              <ul className="space-y-1">
+                {typedAiReport.data_sources.map((source: { name: string; detail: string }, i: number) => (
+                  <li key={i} className="text-xs text-muted-foreground">
+                    <span className="font-medium text-foreground">{source.name}</span>
+                    {" — "}{source.detail}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
       )}

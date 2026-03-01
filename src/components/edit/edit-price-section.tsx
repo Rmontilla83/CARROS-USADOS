@@ -8,6 +8,7 @@ import {
   Save,
   CheckCircle2,
   XCircle,
+  AlertTriangle,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ export function EditPriceSection({ vehicleId, initialPrice, aiData }: Props) {
   }
 
   async function onSubmit(values: VehiclePriceFormData) {
-    if (priceStatus === "below_min" || priceStatus === "above_max") return;
+    if (priceStatus === "below_min") return;
 
     setSaving(true);
     setError(null);
@@ -185,8 +186,7 @@ export function EditPriceSection({ vehicleId, initialPrice, aiData }: Props) {
             }}
             aria-invalid={
               !!errors.price ||
-              priceStatus === "below_min" ||
-              priceStatus === "above_max"
+              priceStatus === "below_min"
             }
           />
         </div>
@@ -204,11 +204,11 @@ export function EditPriceSection({ vehicleId, initialPrice, aiData }: Props) {
           </div>
         )}
         {priceStatus === "above_max" && aiData && (
-          <div className="flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 p-3">
-            <XCircle className="size-4 shrink-0 text-red-600 mt-0.5" />
-            <p className="text-sm font-medium text-red-800">
-              El precio máximo para este vehículo es $
-              {aiData.marketPriceHigh.toLocaleString("en-US")}
+          <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3">
+            <AlertTriangle className="size-4 shrink-0 text-amber-600 mt-0.5" />
+            <p className="text-sm font-medium text-amber-800">
+              Tu precio está por encima del máximo de mercado ($
+              {aiData.marketPriceHigh.toLocaleString("en-US")}). Puedes continuar, pero podría tardar más en venderse.
             </p>
           </div>
         )}
@@ -247,8 +247,7 @@ export function EditPriceSection({ vehicleId, initialPrice, aiData }: Props) {
         type="submit"
         disabled={
           saving ||
-          priceStatus === "below_min" ||
-          priceStatus === "above_max"
+          priceStatus === "below_min"
         }
         className="gap-2 bg-accent text-accent-foreground hover:bg-accent/90"
       >
