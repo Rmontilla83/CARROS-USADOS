@@ -11,6 +11,7 @@ import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -225,6 +226,15 @@ export default async function VehicleDetailPage({ params }: PageProps) {
                 <ExternalLink className="size-3.5" />
                 Ver tarjeta pública
               </Link>
+              {(v.status === "active" || v.status === "expired") && (
+                <Link
+                  href={`/dashboard/vehicles/${v.id}/edit`}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary"
+                >
+                  <Pencil className="size-3.5" />
+                  Editar
+                </Link>
+              )}
               {v.status === "active" && (
                 <MarkAsSoldButton vehicleId={v.id} />
               )}

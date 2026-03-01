@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { publishVehicleSchema, type PublishVehicleData } from "@/lib/validations/vehicle";
+import {
+  publishVehicleSchema,
+  type PublishVehicleData,
+  updateVehicleSchema,
+  type UpdateVehicleData,
+} from "@/lib/validations/vehicle";
 import { sendEmail } from "@/lib/email/resend";
 import { vehiclePublishedEmail } from "@/lib/email/templates/vehicle-published";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -277,5 +282,184 @@ export async function renewVehicle(
 
   revalidatePath(`/dashboard/vehicles/${vehicleId}`);
   revalidatePath("/dashboard/vehicles");
+  return { success: true };
+}
+
+export interface UpdateVehicleResult {
+  success: boolean;
+  error?: string;
+}
+
+export async function updateVehicle(
+  data: UpdateVehicleData
+): Promise<UpdateVehicleResult> {
+  const parsed = updateVehicleSchema.safeParse(data);
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0].message };
+  }
+
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: "No autenticado" };
+  }
+
+  // Verify ownership and editable status
+  const { data: vehicle, error: fetchError } = await supabase
+    .from("vehicles")
+    .select("id, slug, status, user_id")
+    .eq("id", parsed.data.vehicleId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError || !vehicle) {
+    return { success: false, error: "Vehículo no encontrado" };
+  }
+
+  const v = vehicle as { id: string; slug: string; status: string; user_id: string };
+
+  if (v.status !== "active" && v.status !== "expired") {
+    return { success: false, error: "Solo puedes editar vehículos activos o vencidos" };
+  }
+
+  // Validate price against AI report if price changed
+  if (parsed.data.price !== undefined) {
+    const { data: aiReport } = await supabase
+      .from("ai_price_reports")
+      .select("market_price_low, market_price_high")
+      .eq("vehicle_id", v.id)
+      .order("generated_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    const report = aiReport as { market_price_low: number | null; market_price_high: number | null } | null;
+
+    if (report?.market_price_low != null && report?.market_price_high != null) {
+      if (parsed.data.price < report.market_price_low) {
+        return {
+          success: false,
+          error: `El precio no puede ser menor a $${report.market_price_low.toLocaleString("en-US")} (mínimo del reporte IA)`,
+        };
+      }
+      if (parsed.data.price > report.market_price_high) {
+        return {
+          success: false,
+          error: `El precio no puede ser mayor a $${report.market_price_high.toLocaleString("en-US")} (máximo del reporte IA)`,
+        };
+      }
+    }
+  }
+
+  // Build vehicle update object (only changed fields)
+  const vehicleUpdate: Record<string, unknown> = {};
+  if (parsed.data.price !== undefined) vehicleUpdate.price = parsed.data.price;
+  if (parsed.data.description !== undefined) {
+    vehicleUpdate.description = parsed.data.description
+      ? sanitizeString(parsed.data.description)
+      : null;
+  }
+  if (parsed.data.conditions !== undefined) vehicleUpdate.conditions = parsed.data.conditions;
+
+  // Update vehicle record if any fields changed
+  if (Object.keys(vehicleUpdate).length > 0) {
+    const { error: updateError } = await supabase
+      .from("vehicles")
+      .update(vehicleUpdate)
+      .eq("id", v.id)
+      .eq("user_id", user.id);
+
+    if (updateError) {
+      console.error("Update vehicle error:", updateError);
+      return { success: false, error: "Error al actualizar el vehículo" };
+    }
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+
+  // Handle removed photos
+  if (parsed.data.removedPhotoStoragePaths && parsed.data.removedPhotoStoragePaths.length > 0) {
+    // Delete media records
+    for (const path of parsed.data.removedPhotoStoragePaths) {
+      await supabase
+        .from("media")
+        .delete()
+        .eq("vehicle_id", v.id)
+        .eq("storage_path", path);
+    }
+    // Delete from storage
+    await supabase.storage
+      .from("vehicles")
+      .remove(parsed.data.removedPhotoStoragePaths);
+  }
+
+  // Handle photo reorder + new photos
+  if (parsed.data.photoStoragePaths && parsed.data.coverPhotoIndex !== undefined) {
+    const coverIndex = parsed.data.coverPhotoIndex;
+    for (let i = 0; i < parsed.data.photoStoragePaths.length; i++) {
+      const path = parsed.data.photoStoragePaths[i];
+      const url = `${supabaseUrl}/storage/v1/object/public/vehicles/${path}`;
+
+      // Try to update existing media record
+      const { data: existing } = await supabase
+        .from("media")
+        .select("id")
+        .eq("vehicle_id", v.id)
+        .eq("storage_path", path)
+        .single();
+
+      if (existing) {
+        // Update display order and cover flag
+        await supabase
+          .from("media")
+          .update({ display_order: i, is_cover: i === coverIndex })
+          .eq("id", (existing as { id: string }).id);
+      } else {
+        // Insert new media record
+        await supabase.from("media").insert({
+          vehicle_id: v.id,
+          type: "photo" as const,
+          url,
+          storage_path: path,
+          display_order: i,
+          is_cover: i === coverIndex,
+        });
+      }
+    }
+  }
+
+  // Handle removed video
+  if (parsed.data.removedVideoStoragePath) {
+    await supabase
+      .from("media")
+      .delete()
+      .eq("vehicle_id", v.id)
+      .eq("storage_path", parsed.data.removedVideoStoragePath);
+    await supabase.storage
+      .from("vehicles")
+      .remove([parsed.data.removedVideoStoragePath]);
+  }
+
+  // Handle new video
+  if (parsed.data.videoStoragePath) {
+    const url = `${supabaseUrl}/storage/v1/object/public/vehicles/${parsed.data.videoStoragePath}`;
+    await supabase.from("media").insert({
+      vehicle_id: v.id,
+      type: "video" as const,
+      url,
+      storage_path: parsed.data.videoStoragePath,
+      display_order: 0,
+      is_cover: false,
+    });
+  }
+
+  // Revalidate pages
+  revalidatePath(`/dashboard/vehicles/${v.id}`);
+  revalidatePath("/dashboard/vehicles");
+  revalidatePath(`/${v.slug}`);
+
   return { success: true };
 }

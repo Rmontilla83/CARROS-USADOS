@@ -79,3 +79,22 @@ export const publishVehicleSchema = z.object({
 });
 
 export type PublishVehicleData = z.infer<typeof publishVehicleSchema>;
+
+// Schema for editing an existing vehicle (all fields optional except vehicleId)
+export const updateVehicleSchema = z.object({
+  vehicleId: z.string().uuid(),
+  price: z.number().positive("El precio debe ser mayor a 0").max(999999, "Precio inválido").optional(),
+  description: z.string().max(2000, "Máximo 2000 caracteres").optional(),
+  conditions: z.record(z.string(), z.boolean()).optional(),
+  // Final ordered list of storage paths (existing + new)
+  photoStoragePaths: z.array(z.string()).min(MIN_PHOTOS).max(MAX_PHOTOS).optional(),
+  coverPhotoIndex: z.number().int().min(0).optional(),
+  // Paths to remove from storage + media table
+  removedPhotoStoragePaths: z.array(z.string()).optional(),
+  // New video path (replaces existing)
+  videoStoragePath: z.string().optional().nullable(),
+  // Old video path to remove from storage + media
+  removedVideoStoragePath: z.string().optional(),
+});
+
+export type UpdateVehicleData = z.infer<typeof updateVehicleSchema>;
