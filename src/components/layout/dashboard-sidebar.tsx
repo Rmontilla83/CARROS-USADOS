@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   Plus,
   CreditCard,
+  Bell,
   LogOut,
   Menu,
   X,
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/vehicles", label: "Mis Vehículos", icon: Car },
   { href: "/dashboard/publish", label: "Publicar Vehículo", icon: Plus },
   { href: "/dashboard/payments", label: "Pagos", icon: CreditCard },
+  { href: "/dashboard/alerts", label: "Mis Alertas", icon: Bell },
 ];
 
 export function DashboardSidebar({ userName, userEmail, userRole }: Props) {

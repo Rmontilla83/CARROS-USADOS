@@ -158,3 +158,35 @@ export interface AiPriceReport {
   data_sources: unknown[];
   generated_at: string;
 }
+
+export type AlertStatus = "active" | "paused" | "expired";
+
+export interface SearchAlert {
+  id: string;
+  user_id: string;
+  label: string;
+  brand: string | null;
+  model: string | null;
+  year_min: number | null;
+  year_max: number | null;
+  price_min: number | null;
+  price_max: number | null;
+  transmission: VehicleTransmission | null;
+  fuel: VehicleFuel | null;
+  city: string | null;
+  status: AlertStatus;
+  duration_days: number;
+  expires_at: string;
+  notification_count: number;
+  last_notified_at: string | null;
+  unsubscribe_token: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AlertNotification {
+  id: string;
+  alert_id: string;
+  vehicle_id: string;
+  sent_at: string;
+}

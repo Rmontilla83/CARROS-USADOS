@@ -15,16 +15,19 @@ import {
   Fuel,
   Cog,
   Star,
+  Bell,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { TrustBadges } from "@/components/vehicle/trust-badges";
+import { computeTrustBadgesBatch } from "@/lib/trust-badges";
 import { createClient } from "@/lib/supabase/server";
 import { PUBLICATION_PRICE_USD } from "@/lib/constants";
 import type { Vehicle, Media } from "@/types";
 
 type FeaturedVehicle = Pick<
   Vehicle,
-  "id" | "brand" | "model" | "year" | "price" | "slug" | "mileage" | "transmission" | "fuel" | "views_count"
+  "id" | "brand" | "model" | "year" | "price" | "slug" | "mileage" | "transmission" | "fuel" | "views_count" | "conditions" | "user_id"
 >;
 
 const TRANSMISSION_LABELS: Record<string, string> = {
@@ -48,7 +51,7 @@ export default async function Home() {
 
   const { data: vehicles } = await supabase
     .from("vehicles")
-    .select("id, brand, model, year, price, slug, mileage, transmission, fuel, views_count")
+    .select("id, brand, model, year, price, slug, mileage, transmission, fuel, views_count, conditions, user_id")
     .eq("status", "active")
     .order("published_at", { ascending: false })
     .limit(12);
@@ -70,6 +73,60 @@ export default async function Home() {
         coverMap.set(c.vehicle_id, c.url);
       }
     }
+  }
+
+  // Batch-fetch trust badge data
+  let badgesMap = new Map<string, import("@/lib/trust-badges").TrustBadge[]>();
+  if (typedVehicles.length > 0) {
+    const vehicleIds = typedVehicles.map((v) => v.id);
+    const userIds = [...new Set(typedVehicles.map((v) => v.user_id))];
+
+    const [{ data: photoRows }, { data: aiRows }, { data: profileRows }] = await Promise.all([
+      supabase
+        .from("media")
+        .select("vehicle_id, created_at")
+        .in("vehicle_id", vehicleIds)
+        .eq("type", "photo")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("ai_price_reports")
+        .select("vehicle_id, price_market_avg")
+        .in("vehicle_id", vehicleIds),
+      supabase
+        .from("profiles")
+        .select("id, is_verified")
+        .in("id", userIds),
+    ]);
+
+    const latestPhotoDates = new Map<string, string>();
+    if (photoRows) {
+      for (const r of photoRows as { vehicle_id: string; created_at: string }[]) {
+        if (!latestPhotoDates.has(r.vehicle_id)) {
+          latestPhotoDates.set(r.vehicle_id, r.created_at);
+        }
+      }
+    }
+
+    const aiMarketAvgs = new Map<string, number>();
+    if (aiRows) {
+      for (const r of aiRows as { vehicle_id: string; price_market_avg: number | null }[]) {
+        if (r.price_market_avg != null) aiMarketAvgs.set(r.vehicle_id, r.price_market_avg);
+      }
+    }
+
+    const sellerVerifiedMap = new Map<string, boolean>();
+    if (profileRows) {
+      for (const r of profileRows as { id: string; is_verified: boolean }[]) {
+        sellerVerifiedMap.set(r.id, r.is_verified);
+      }
+    }
+
+    const vehicleSellerVerified = new Map<string, boolean>();
+    for (const v of typedVehicles) {
+      vehicleSellerVerified.set(v.id, sellerVerifiedMap.get(v.user_id) ?? false);
+    }
+
+    badgesMap = computeTrustBadgesBatch(typedVehicles, latestPhotoDates, aiMarketAvgs, vehicleSellerVerified);
   }
 
   // Stats for social proof
@@ -288,6 +345,7 @@ export default async function Home() {
               <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {typedVehicles.map((vehicle) => {
                   const coverUrl = coverMap.get(vehicle.id);
+                  const vehicleBadges = badgesMap.get(vehicle.id) ?? [];
                   return (
                     <Link
                       key={vehicle.id}
@@ -337,6 +395,11 @@ export default async function Home() {
                             {FUEL_LABELS[vehicle.fuel]}
                           </span>
                         </div>
+                        {vehicleBadges.length > 0 && (
+                          <div className="mt-2">
+                            <TrustBadges badges={vehicleBadges} compact />
+                          </div>
+                        )}
                       </div>
                     </Link>
                   );
@@ -480,6 +543,48 @@ export default async function Home() {
                   <p className="mt-1 text-sm text-white/70">{stat.label}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* =================== ALERTS PROMO =================== */}
+        <section className="py-20 sm:py-28">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6">
+            <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#1B4F72] to-[#2E86C1] p-8 sm:p-12">
+              <div className="flex flex-col items-center gap-8 text-center md:flex-row md:text-left">
+                <div className="flex-1">
+                  <p className="text-sm font-semibold uppercase tracking-widest text-accent">Para compradores</p>
+                  <h2 className="mt-2 text-3xl font-bold text-white sm:text-4xl">
+                    Alertas Inteligentes
+                  </h2>
+                  <p className="mt-4 max-w-lg text-lg leading-relaxed text-white/75">
+                    Define el carro que buscas y recibe una notificación por email apenas se publique uno que coincida.
+                    Sin tener que revisar el catálogo todos los días.
+                  </p>
+                  <div className="mt-6 flex flex-wrap items-center gap-3 justify-center md:justify-start">
+                    <Link
+                      href="/register"
+                      className="inline-flex items-center gap-2 rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-accent/90"
+                    >
+                      <Bell className="size-4" />
+                      Crear mi primera alerta
+                    </Link>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-left">
+                  {[
+                    { label: "Marca y modelo", desc: "Toyota Corolla, Fortuner..." },
+                    { label: "Rango de precio", desc: "$5,000 - $15,000" },
+                    { label: "Año", desc: "2015 - 2020" },
+                    { label: "Transmisión", desc: "Automática o manual" },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-xl bg-white/10 p-4 backdrop-blur-sm">
+                      <p className="text-sm font-bold text-white">{item.label}</p>
+                      <p className="mt-0.5 text-xs text-white/60">{item.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </section>

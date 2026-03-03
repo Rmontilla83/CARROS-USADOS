@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Car, Gauge, Cog, Fuel } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { computeTrustBadgesBatch } from "@/lib/trust-badges";
+import { TrustBadges } from "@/components/vehicle/trust-badges";
 import type { Vehicle, Media } from "@/types";
 
 const PER_PAGE = 12;
@@ -21,7 +23,7 @@ const FUEL_LABELS: Record<string, string> = {
 
 type FeaturedVehicle = Pick<
   Vehicle,
-  "id" | "brand" | "model" | "year" | "price" | "slug" | "mileage" | "transmission" | "fuel"
+  "id" | "brand" | "model" | "year" | "price" | "slug" | "mileage" | "transmission" | "fuel" | "conditions" | "user_id"
 >;
 
 interface CatalogGridProps {
@@ -38,7 +40,7 @@ export async function CatalogGrid({ searchParams }: CatalogGridProps) {
   // Build query
   let query = supabase
     .from("vehicles")
-    .select("id, brand, model, year, price, slug, mileage, transmission, fuel", {
+    .select("id, brand, model, year, price, slug, mileage, transmission, fuel, conditions, user_id", {
       count: "exact",
     })
     .eq("status", "active");
@@ -105,6 +107,66 @@ export async function CatalogGrid({ searchParams }: CatalogGridProps) {
     }
   }
 
+  // Batch-fetch trust badge data
+  let badgesMap = new Map<string, import("@/lib/trust-badges").TrustBadge[]>();
+  if (typedVehicles.length > 0) {
+    const vehicleIds = typedVehicles.map((v) => v.id);
+    const userIds = [...new Set(typedVehicles.map((v) => v.user_id))];
+
+    // Latest photo dates per vehicle
+    const { data: photoRows } = await supabase
+      .from("media")
+      .select("vehicle_id, created_at")
+      .in("vehicle_id", vehicleIds)
+      .eq("type", "photo")
+      .order("created_at", { ascending: false });
+
+    const latestPhotoDates = new Map<string, string>();
+    if (photoRows) {
+      for (const r of photoRows as { vehicle_id: string; created_at: string }[]) {
+        if (!latestPhotoDates.has(r.vehicle_id)) {
+          latestPhotoDates.set(r.vehicle_id, r.created_at);
+        }
+      }
+    }
+
+    // AI market averages per vehicle
+    const { data: aiRows } = await supabase
+      .from("ai_price_reports")
+      .select("vehicle_id, price_market_avg")
+      .in("vehicle_id", vehicleIds);
+
+    const aiMarketAvgs = new Map<string, number>();
+    if (aiRows) {
+      for (const r of aiRows as { vehicle_id: string; price_market_avg: number | null }[]) {
+        if (r.price_market_avg != null) {
+          aiMarketAvgs.set(r.vehicle_id, r.price_market_avg);
+        }
+      }
+    }
+
+    // Seller verification status
+    const { data: profileRows } = await supabase
+      .from("profiles")
+      .select("id, is_verified")
+      .in("id", userIds);
+
+    const sellerVerifiedMap = new Map<string, boolean>();
+    if (profileRows) {
+      for (const r of profileRows as { id: string; is_verified: boolean }[]) {
+        sellerVerifiedMap.set(r.id, r.is_verified);
+      }
+    }
+
+    // Map seller verification to vehicle IDs
+    const vehicleSellerVerified = new Map<string, boolean>();
+    for (const v of typedVehicles) {
+      vehicleSellerVerified.set(v.id, sellerVerifiedMap.get(v.user_id) ?? false);
+    }
+
+    badgesMap = computeTrustBadgesBatch(typedVehicles, latestPhotoDates, aiMarketAvgs, vehicleSellerVerified);
+  }
+
   // Build pagination URL helper
   function pageUrl(p: number) {
     const params = new URLSearchParams();
@@ -141,6 +203,7 @@ export async function CatalogGrid({ searchParams }: CatalogGridProps) {
       <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
         {typedVehicles.map((vehicle) => {
           const coverUrl = coverMap.get(vehicle.id);
+          const vehicleBadges = badgesMap.get(vehicle.id) ?? [];
           return (
             <Link
               key={vehicle.id}
@@ -188,6 +251,11 @@ export async function CatalogGrid({ searchParams }: CatalogGridProps) {
                     {FUEL_LABELS[vehicle.fuel]}
                   </span>
                 </div>
+                {vehicleBadges.length > 0 && (
+                  <div className="mt-2">
+                    <TrustBadges badges={vehicleBadges} compact />
+                  </div>
+                )}
               </div>
             </Link>
           );

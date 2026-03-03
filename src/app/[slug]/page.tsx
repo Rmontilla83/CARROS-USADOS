@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import {
   Car,
   Calendar,
@@ -23,9 +24,13 @@ import { WhatsAppButton } from "@/components/vehicle/whatsapp-button";
 import { ShareButton } from "@/components/vehicle/share-button";
 import { ViewTracker } from "@/components/vehicle/view-tracker";
 import { PriceAnalysisCard } from "@/components/vehicle/price-analysis-card";
+import { TrustBadges } from "@/components/vehicle/trust-badges";
+import { computeTrustBadges } from "@/lib/trust-badges";
 import { createClient } from "@/lib/supabase/server";
 import { VEHICLE_CONDITIONS, APP_NAME, APP_URL } from "@/lib/constants";
 import type { Vehicle, Media, Profile } from "@/types";
+
+import { SimilarVehicles } from "@/components/vehicle/similar-vehicles";
 
 // Lazy load below-the-fold components
 const FeedbackForm = dynamic(
@@ -118,22 +123,45 @@ async function getVehicle(slug: string) {
     .limit(1)
     .single();
 
+  // Fetch seller verification status for trust badges
+  const { data: sellerProfile } = await supabase
+    .from("profiles")
+    .select("is_verified")
+    .eq("id", typedVehicle.user_id)
+    .single();
+
+  // Latest photo date for trust badges
+  const latestPhotoDate = photos.length > 0
+    ? photos.reduce((latest, p) => p.created_at > latest ? p.created_at : latest, photos[0].created_at)
+    : null;
+
+  const typedAiReport = aiReport as {
+    suggested_price: number | null;
+    market_price_low: number | null;
+    market_price_high: number | null;
+    price_market_avg: number | null;
+    confidence: number | null;
+    analysis: string | null;
+    factors_up: string[] | null;
+    factors_down: string[] | null;
+    market_summary: string | null;
+  } | null;
+
+  // Compute trust badges
+  const trustBadges = computeTrustBadges({
+    vehicle: typedVehicle,
+    latestPhotoDate,
+    aiMarketAvg: typedAiReport?.price_market_avg ?? null,
+    sellerVerified: (sellerProfile as { is_verified: boolean } | null)?.is_verified ?? false,
+  });
+
   return {
     vehicle: typedVehicle,
     photos,
     video,
     seller: profile as Pick<Profile, "full_name" | "phone" | "city"> | null,
-    aiReport: aiReport as {
-      suggested_price: number | null;
-      market_price_low: number | null;
-      market_price_high: number | null;
-      price_market_avg: number | null;
-      confidence: number | null;
-      analysis: string | null;
-      factors_up: string[] | null;
-      factors_down: string[] | null;
-      market_summary: string | null;
-    } | null,
+    aiReport: typedAiReport,
+    trustBadges,
   };
 }
 
@@ -174,7 +202,7 @@ export default async function VehicleCardPage({ params }: PageProps) {
   const data = await getVehicle(slug);
   if (!data) notFound();
 
-  const { vehicle, photos, video, seller, aiReport } = data;
+  const { vehicle, photos, video, seller, aiReport, trustBadges } = data;
 
   // Compute dynamic price badge (semaphore)
   let priceBadge: { label: string; emoji: string; className: string } | null = null;
@@ -294,6 +322,11 @@ export default async function VehicleCardPage({ params }: PageProps) {
                 <Eye className="inline size-3" /> {vehicle.views_count} visitas
               </span>
             </div>
+            {trustBadges.length > 0 && (
+              <div className="mt-3 border-t border-border pt-3">
+                <TrustBadges badges={trustBadges} />
+              </div>
+            )}
           </div>
 
           {/* AI Price analysis section */}
@@ -393,6 +426,15 @@ export default async function VehicleCardPage({ params }: PageProps) {
               />
             </div>
           )}
+
+          {/* Similar vehicles + AI comparison */}
+          <Suspense
+            fallback={
+              <div className="h-32 animate-pulse rounded-2xl bg-secondary" />
+            }
+          >
+            <SimilarVehicles vehicle={vehicle} />
+          </Suspense>
 
           {/* Security banner */}
           <Link

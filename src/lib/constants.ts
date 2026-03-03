@@ -76,6 +76,14 @@ export const VEHICLE_BRANDS = [
   "Otro",
 ] as const;
 
+// Search alerts
+export const MAX_ACTIVE_ALERTS = 5;
+export const ALERT_DURATION_OPTIONS = [
+  { value: 30, label: "30 días" },
+  { value: 60, label: "60 días" },
+  { value: 90, label: "90 días" },
+] as const;
+
 // Vehicle conditions checklist
 export const VEHICLE_CONDITIONS = [
   { key: "papers_ok", label: "Papeles al día" },

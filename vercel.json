@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/daily-insight",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/expire-alerts",
+      "schedule": "0 6 * * *"
     }
   ]
 }

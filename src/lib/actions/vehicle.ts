@@ -155,7 +155,7 @@ export async function activateVehicle(vehicleId: string): Promise<{ success: boo
   // Only activate drafts (idempotent for webhook retries)
   const { data: vehicle, error: fetchError } = await supabase
     .from("vehicles")
-    .select("id, status, user_id, brand, model, year, slug")
+    .select("id, status, user_id, brand, model, year, slug, price, transmission, fuel")
     .eq("id", vehicleId)
     .single();
 
@@ -184,6 +184,11 @@ export async function activateVehicle(vehicleId: string): Promise<{ success: boo
     console.error("Activate vehicle error:", updateError);
     return { success: false, error: "Failed to activate vehicle" };
   }
+
+  // Fire-and-forget: match against search alerts
+  import("@/lib/alerts/match-alerts").then(({ matchAndNotifyAlerts }) =>
+    matchAndNotifyAlerts(vehicle).catch((err) => console.error("Alert matching error:", err))
+  );
 
   // Send publication email
   try {

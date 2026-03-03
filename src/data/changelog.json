@@ -1,5 +1,31 @@
 [
   {
+    "version": "2.3.0",
+    "date": "2026-03-03",
+    "entries": [
+      {
+        "type": "feature",
+        "title": "Alertas Inteligentes",
+        "description": "Recibe notificaciones por email cuando se publica un vehículo que coincide con tu búsqueda. Define marca, modelo, rango de precio y año. Hasta 5 alertas activas con duración de 30, 60 o 90 días. Pausar y reactivar desde el dashboard."
+      },
+      {
+        "type": "feature",
+        "title": "Comparador con IA",
+        "description": "Compara vehículos similares lado a lado con análisis inteligente. El sistema encuentra automáticamente vehículos de la misma marca con precio y año similar, y genera pros/contras, score de valor y recomienda la mejor opción de compra."
+      },
+      {
+        "type": "feature",
+        "title": "Badges de Confianza",
+        "description": "Indicadores visuales en cada vehículo: papeles verificados (verde), fotos recientes (azul), precio justo según IA (morado) y vendedor verificado (ámbar). Visibles en catálogo, landing y detalle del vehículo."
+      },
+      {
+        "type": "improvement",
+        "title": "Dashboard unificado comprador/vendedor",
+        "description": "Ahora puedes ser comprador y vendedor desde el mismo perfil. Nueva sección 'Mis Alertas' en el dashboard para gestionar alertas de búsqueda."
+      }
+    ]
+  },
+  {
     "version": "2.2.0",
     "date": "2026-02-28",
     "entries": [

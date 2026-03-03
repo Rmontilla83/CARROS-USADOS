@@ -78,6 +78,23 @@ export async function updateVehicleStatus(
     return { success: false, error: "Error al actualizar el estado." };
   }
 
+  // Fire-and-forget: match against search alerts when activating
+  if (status === "active") {
+    const { data: vehicleData } = await supabase
+      .from("vehicles")
+      .select("id, brand, model, year, price, transmission, fuel, slug, user_id")
+      .eq("id", vehicleId)
+      .single();
+
+    if (vehicleData) {
+      import("@/lib/alerts/match-alerts").then(({ matchAndNotifyAlerts }) =>
+        matchAndNotifyAlerts(vehicleData as import("@/types").Vehicle).catch((err) =>
+          console.error("Alert matching error:", err)
+        )
+      );
+    }
+  }
+
   revalidatePath("/admin/vehicles");
   return { success: true };
 }
