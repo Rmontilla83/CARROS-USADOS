@@ -13,6 +13,7 @@ import {
   X,
   Home,
   Shield,
+  Search,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface Props {
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
+  { href: "/catalogo", label: "Catálogo", icon: Search },
   { href: "/dashboard/vehicles", label: "Mis Vehículos", icon: Car },
   { href: "/dashboard/publish", label: "Publicar Vehículo", icon: Plus },
   { href: "/dashboard/payments", label: "Pagos", icon: CreditCard },

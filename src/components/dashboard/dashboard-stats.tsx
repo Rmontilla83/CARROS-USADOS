@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Car, Eye, QrCode, ArrowRight, Plus } from "lucide-react";
+import { Car, Eye, QrCode, ArrowRight, Plus, Search, Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import type { Vehicle } from "@/types";
 
@@ -77,6 +77,39 @@ export async function DashboardStats() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Explore catalog */}
+      <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-6 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="rounded-xl bg-primary/10 p-3">
+              <Search className="size-6 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">
+                Explorar Catálogo
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Busca entre todos los vehículos disponibles y activa alertas
+                inteligentes
+              </p>
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-accent">
+                <Bell className="size-3.5" />
+                <span className="font-medium">
+                  Guarda búsquedas y recibe notificaciones
+                </span>
+              </div>
+            </div>
+          </div>
+          <Link
+            href="/catalogo"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-colors hover:bg-primary/90"
+          >
+            Ver Catálogo
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
       </div>
 
       {/* Quick actions */}

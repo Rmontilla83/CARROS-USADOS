@@ -1,5 +1,21 @@
 [
   {
+    "version": "2.4.0",
+    "date": "2026-03-03",
+    "entries": [
+      {
+        "type": "feature",
+        "title": "Catálogo en el Dashboard",
+        "description": "Nueva sección 'Explorar Catálogo' en el dashboard con acceso directo al catálogo de vehículos. También disponible como enlace en el sidebar de navegación."
+      },
+      {
+        "type": "feature",
+        "title": "Guardar búsqueda como alerta",
+        "description": "Desde el catálogo, al aplicar filtros aparece un botón para guardar la búsqueda actual como alerta inteligente. Se pre-rellenan los criterios seleccionados y puedes elegir nombre y duración de la alerta."
+      }
+    ]
+  },
+  {
     "version": "2.3.0",
     "date": "2026-03-03",
     "entries": [

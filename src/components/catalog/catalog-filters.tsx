@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal, X, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { VEHICLE_BRANDS, MAIN_CITIES, MIN_YEAR, MAX_YEAR } from "@/lib/constants";
+import { SaveSearchAlert, type CatalogFiltersData } from "./save-search-alert";
 
 const TRANSMISSION_OPTIONS = [
   { value: "", label: "Todas" },
@@ -31,7 +32,7 @@ const FUEL_OPTIONS = [
   { value: "gas", label: "Gas" },
 ] as const;
 
-function FilterForm({ onApply }: { onApply?: () => void }) {
+function FilterForm({ onApply, onSaveAlert }: { onApply?: () => void; onSaveAlert?: (filters: CatalogFiltersData) => void }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -224,12 +225,34 @@ function FilterForm({ onApply }: { onApply?: () => void }) {
           </Button>
         )}
       </div>
+
+      {/* Save as alert */}
+      {hasFilters && onSaveAlert && (
+        <Button
+          variant="outline"
+          onClick={() => onSaveAlert({ brand, city, yearMin, yearMax, priceMin, priceMax, transmission, fuel, q })}
+          className="w-full gap-2 border-accent/30 text-accent hover:bg-accent/10 hover:text-accent"
+        >
+          <Bell className="size-4" />
+          Guardar búsqueda como alerta
+        </Button>
+      )}
     </div>
   );
 }
 
 export function CatalogFilters() {
   const [open, setOpen] = useState(false);
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertFilters, setAlertFilters] = useState<CatalogFiltersData>({
+    brand: "", city: "", yearMin: "", yearMax: "",
+    priceMin: "", priceMax: "", transmission: "", fuel: "", q: "",
+  });
+
+  function handleSaveAlert(filters: CatalogFiltersData) {
+    setAlertFilters(filters);
+    setAlertOpen(true);
+  }
 
   return (
     <>
@@ -239,7 +262,7 @@ export function CatalogFilters() {
           <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-muted-foreground">
             Filtros
           </h2>
-          <FilterForm />
+          <FilterForm onSaveAlert={handleSaveAlert} />
         </div>
       </aside>
 
@@ -257,11 +280,18 @@ export function CatalogFilters() {
               <SheetTitle>Filtros</SheetTitle>
             </SheetHeader>
             <div className="mt-4">
-              <FilterForm onApply={() => setOpen(false)} />
+              <FilterForm onApply={() => setOpen(false)} onSaveAlert={(filters) => { setOpen(false); handleSaveAlert(filters); }} />
             </div>
           </SheetContent>
         </Sheet>
       </div>
+
+      {/* Save search alert dialog */}
+      <SaveSearchAlert
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        filters={alertFilters}
+      />
     </>
   );
 }
